@@ -189,8 +189,8 @@ def paramInit():
         lowCmd.motorCmd[i].q = lowState.motorState[i].q
 
 def stand():   
-    pos = [0.0, 0.67, -1.3, -0.0, 0.67, -1.3, 
-                      0.0, 0.67, -1.3, -0.0, 0.67, -1.3]
+    pos = [0.0, 0.9, -1.8, 0.0, 0.9, -1.8, 
+                      0.0, 0.9, -1.8, 0.0, 0.9, -1.8]
     moveAllPosition(pos, 2*100);
 
 
@@ -202,7 +202,6 @@ def motion_init():
 def sendServoCmd():
     for m in range(12):
         servo_pub[m].publish(lowCmd.motorCmd[m])
-    print(lowCmd.motorCmd[2].q)
     rospy.sleep(0.01)
 
 
