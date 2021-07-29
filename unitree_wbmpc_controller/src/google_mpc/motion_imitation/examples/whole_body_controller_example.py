@@ -23,9 +23,9 @@ from mpc_controller import gait_generator as gait_generator_lib
 from mpc_controller import locomotion_controller
 from mpc_controller import openloop_gait_generator
 from mpc_controller import raibert_swing_leg_controller
-#from mpc_controller import torque_stance_leg_controller
+from mpc_controller import torque_stance_leg_controller
 #import mpc_osqp
-from mpc_controller import torque_stance_leg_controller_quadprog as torque_stance_leg_controller
+# from mpc_controller import torque_stance_leg_controller_quadprog as torque_stance_leg_controller
 
 
 from motion_imitation.robots import a1
@@ -50,15 +50,15 @@ _STANCE_DURATION_SECONDS = [
 ] * 4  # For faster trotting (v > 1.5 ms reduce this to 0.13s).
 
 # Standing
-# _DUTY_FACTOR = [1.] * 4
-# _INIT_PHASE_FULL_CYCLE = [0., 0., 0., 0.]
+_DUTY_FACTOR = [1.] * 4
+_INIT_PHASE_FULL_CYCLE = [0., 0., 0., 0.]
 
-# _INIT_LEG_STATE = (
-#     gait_generator_lib.LegState.STANCE,
-#     gait_generator_lib.LegState.STANCE,
-#     gait_generator_lib.LegState.STANCE,
-#     gait_generator_lib.LegState.STANCE,
-# )
+_INIT_LEG_STATE = (
+    gait_generator_lib.LegState.STANCE,
+    gait_generator_lib.LegState.STANCE,
+    gait_generator_lib.LegState.STANCE,
+    gait_generator_lib.LegState.STANCE,
+)
 
 # Tripod
 # _DUTY_FACTOR = [.8] * 4
@@ -72,22 +72,25 @@ _STANCE_DURATION_SECONDS = [
 # )
 
 # Trotting
-_DUTY_FACTOR = [0.6] * 4
-_INIT_PHASE_FULL_CYCLE = [0.9, 0, 0, 0.9]
+# _DUTY_FACTOR = [0.6] * 4
+# _INIT_PHASE_FULL_CYCLE = [0.9, 0, 0, 0.9]
 
-_INIT_LEG_STATE = (
-    gait_generator_lib.LegState.SWING,
-    gait_generator_lib.LegState.STANCE,
-    gait_generator_lib.LegState.STANCE,
-    gait_generator_lib.LegState.SWING,
-)
+# _INIT_LEG_STATE = (
+#     gait_generator_lib.LegState.SWING,
+#     gait_generator_lib.LegState.STANCE,
+#     gait_generator_lib.LegState.STANCE,
+#     gait_generator_lib.LegState.SWING,
+# )
 
 
 def _generate_example_linear_angular_speed(t):
   """Creates an example speed profile based on time for demo purpose."""
-  vx = 0.6
-  vy = 0.2
-  wz = 0.8
+  # vx = 0.6
+  # vy = 0.2
+  # wz = 0.8
+  vx = 0.0
+  vy = 0.0
+  wz = 0.0
 
   time_points = (0, 5, 10, 15, 20, 25, 30)
   speed_points = ((0, 0, 0, 0), (0, 0, 0, wz), (vx, 0, 0, 0), (0, 0, 0, -wz),
@@ -133,6 +136,8 @@ def _setup_controller(robot):
       desired_twisting_speed=desired_twisting_speed,
       desired_body_height=robot.MPC_BODY_HEIGHT
       #,qp_solver = mpc_osqp.QPOASES #or mpc_osqp.OSQP
+      ,body_mass=robot.MPC_BODY_MASS,
+      body_inertia=robot.MPC_BODY_INERTIA
       )
 
   controller = locomotion_controller.LocomotionController(
