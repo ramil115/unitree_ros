@@ -191,7 +191,7 @@ class Minitaur(object):
     self._enable_action_filter = enable_action_filter
     self._last_action = None
 
-    # self._ros = a1_ros("a1")
+    self._ros = a1_ros("a1")
 
     if not motor_model_class:
       raise ValueError("Must provide a motor model class!")
@@ -508,7 +508,7 @@ class Minitaur(object):
         jointIndices=motor_ids,
         controlMode=self._pybullet_client.TORQUE_CONTROL,
         forces=torques)
-    # self._ros.sendTorqueCmd(torques)
+    self._ros.sendTorqueCmd(torques)
     
 
   def _SetDesiredMotorAngleByName(self, motor_name, desired_angle):
@@ -1159,8 +1159,9 @@ class Minitaur(object):
     This function is called once per step. The observations are only updated
     when this function is called.
     """
-    self._joint_states = self._pybullet_client.getJointStates(
-        self.quadruped, self._motor_id_list)
+    #self._joint_states = self._pybullet_client.getJointStates(
+    #    self.quadruped, self._motor_id_list)
+    self._joint_states =  self._ros.getJointStates()
     self._base_position, orientation = (
         self._pybullet_client.getBasePositionAndOrientation(self.quadruped))
     # Computes the relative orientation relative to the robot's

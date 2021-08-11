@@ -200,6 +200,10 @@ class a1_ros:
             # self.lowCmd.motorCmd[i*3+2].Kd = 15
             # self.lowCmd.motorCmd[i*3+2].tau = 0
     
+    def getJointStates(self):
+        state =  [ [self.lowState.motorState[i].q,self.lowState.motorState[i].dq] for i in range(12)]
+        return state
+        
     def sendTorqueCmd(self,torques):
         for j in range(12):
             self.lowCmd.motorCmd[j].tau = torques[j]

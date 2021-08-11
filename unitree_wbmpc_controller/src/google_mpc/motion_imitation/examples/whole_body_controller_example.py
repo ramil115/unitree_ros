@@ -29,6 +29,7 @@ from mpc_controller import torque_stance_leg_controller
 
 
 from motion_imitation.robots import a1
+from motion_imitation.robots import a1_gazebo
 from motion_imitation.robots import robot_config
 from motion_imitation.robots.gamepad import gamepad_reader
 
