@@ -17,7 +17,7 @@ import time
 import pybullet_data
 from pybullet_utils import bullet_client
 import pybullet  # pytype:disable=import-error
-
+import rospy
 from mpc_controller import com_velocity_estimator
 from mpc_controller import gait_generator as gait_generator_lib
 from mpc_controller import locomotion_controller
@@ -157,7 +157,6 @@ def _update_controller_params(controller, lin_speed, ang_speed):
   controller.stance_leg_controller.desired_speed = lin_speed
   controller.stance_leg_controller.desired_twisting_speed = ang_speed
 
-
 def main(argv):
   """Runs the locomotion controller example."""
   del argv # unused
@@ -208,13 +207,25 @@ def main(argv):
   start_time = robot.GetTimeSinceReset()
   current_time = start_time
   com_vels, imu_rates, actions = [], [], []
+
+  from std_srvs.srv    import Empty, EmptyRequest
+  pauseClient=rospy.ServiceProxy('/gazebo/pause_physics',Empty)
+  unpauseClient=rospy.ServiceProxy('/gazebo/unpause_physics',Empty)
+
+  def pause():
+    pauseClient(EmptyRequest())
+
+  def unpause():
+    unpauseClient(EmptyRequest())
+  
+  r = rospy.Rate(100)
   while current_time - start_time < FLAGS.max_time_secs:
-    #time.sleep(0.0008) #on some fast computer, works better with sleep on real A1?
+    #time.sleep(0.002) #on some fast computer, works better with sleep on real A1?
+    pause()
     start_time_robot = current_time
     start_time_wall = time.time()
     # Updates the controller behavior parameters.
     lin_speed, ang_speed, e_stop = command_function(current_time)
-    # print(lin_speed)
     if e_stop:
       logging.info("E-stop kicked, exiting...")
       break
@@ -227,12 +238,15 @@ def main(argv):
     robot.Step(hybrid_action)
     current_time = robot.GetTimeSinceReset()
 
+    unpause()
     if not FLAGS.use_real_robot:
       expected_duration = current_time - start_time_robot
       actual_duration = time.time() - start_time_wall
       if actual_duration < expected_duration:
         time.sleep(expected_duration - actual_duration)
     # print("actual_duration=", actual_duration)
+    r.sleep()
+
   if FLAGS.use_gamepad:
     gamepad.stop()
 
@@ -242,7 +256,7 @@ def main(argv):
              com_vels=com_vels,
              imu_rates=imu_rates)
     logging.info("logged to: {}".format(logdir))
-
+  
 
 if __name__ == "__main__":
   app.run(main)

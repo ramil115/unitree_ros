@@ -508,7 +508,7 @@ class Minitaur(object):
         jointIndices=motor_ids,
         controlMode=self._pybullet_client.TORQUE_CONTROL,
         forces=torques)
-    self._ros.sendTorqueCmd(torques)
+    self._ros.sendTorqueCmd(torques) #ROS
     
 
   def _SetDesiredMotorAngleByName(self, motor_name, desired_angle):
@@ -729,6 +729,8 @@ class Minitaur(object):
                                                  linkIndexA=-1,
                                                  linkIndexB=link_id_2))
       contacts.append(contact_1 or contact_2)
+    
+    contacts = self._ros.getContactPoints() #ROS
     return contacts
 
   def GetFootPositionsInBaseFrame(self):
@@ -1161,9 +1163,12 @@ class Minitaur(object):
     """
     #self._joint_states = self._pybullet_client.getJointStates(
     #    self.quadruped, self._motor_id_list)
-    self._joint_states =  self._ros.getJointStates()
-    self._base_position, orientation = (
-        self._pybullet_client.getBasePositionAndOrientation(self.quadruped))
+    self._joint_states =  self._ros.getJointStates() #ROS
+    #self._base_position, orientation = (
+    #    self._pybullet_client.getBasePositionAndOrientation(self.quadruped))
+
+    self._base_position, orientation = ([], #ROS
+        self._ros.getBaseOrientation())
     # Computes the relative orientation relative to the robot's
     # initial_orientation.
     _, self._base_orientation = self._pybullet_client.multiplyTransforms(

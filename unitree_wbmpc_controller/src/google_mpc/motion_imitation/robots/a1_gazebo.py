@@ -10,6 +10,7 @@ from geometry_msgs.msg import WrenchStamped
 
 class a1_ros:
     def __init__(self, rname):
+        self.footForceThreshold = 0.01
         self.np = rospy.init_node('a1_ros', anonymous=True)
         self.robot_name = rname
         self.lowState = LowState()
@@ -85,7 +86,7 @@ class a1_ros:
         self.lowState.imu.accelerometer[0] = msg.linear_acceleration.x
         self.lowState.imu.accelerometer[1] = msg.linear_acceleration.y
         self.lowState.imu.accelerometer[2] = msg.linear_acceleration.z
-
+    
     def FRhipCallback(self, msg):
         self.lowState.motorState[0].mode = msg.mode
         self.lowState.motorState[0].q = msg.q
@@ -200,10 +201,23 @@ class a1_ros:
             # self.lowCmd.motorCmd[i*3+2].Kd = 15
             # self.lowCmd.motorCmd[i*3+2].tau = 0
     
-    def getJointStates(self):
-        state =  [ [self.lowState.motorState[i].q,self.lowState.motorState[i].dq] for i in range(12)]
-        return state
-        
+    def getJointStates(self): 
+        return [ [self.lowState.motorState[i].q,self.lowState.motorState[i].dq] for i in range(12)]
+    
+    def getBaseAngularVelocity(self):
+        return self.lowState.imu.gyroscope
+
+    def getContactPoints(self):
+        contacts = [False]*4
+        for i in range(4):
+            if self.lowState.footForce[i]>self.footForceThreshold:
+                contacts[i] = True
+
+        return contacts
+
+    def getBaseOrientation(self):
+        return self.lowState.imu.quaternion
+
     def sendTorqueCmd(self,torques):
         for j in range(12):
             self.lowCmd.motorCmd[j].tau = torques[j]
