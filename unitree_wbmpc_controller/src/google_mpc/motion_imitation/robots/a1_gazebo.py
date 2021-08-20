@@ -5,7 +5,7 @@ from unitree_legged_msgs.msg import MotorState
 from unitree_legged_msgs.msg import MotorCmd
 from sensor_msgs.msg import Imu
 from geometry_msgs.msg import WrenchStamped
-
+import time
 
 
 class a1_ros:
@@ -26,6 +26,7 @@ class a1_ros:
                                                  self.RRfootCallback)
         self.footForce_sub[3] = rospy.Subscriber("/visual/RL_foot_contact/the_force", WrenchStamped,
                                                  self.RLfootCallback)
+
         self.servo_sub = [None] * 12
         self.servo_sub[0] = rospy.Subscriber("/" + self.robot_name + "_gazebo/FR_hip_controller/state",
                                              MotorState, self.FRhipCallback)
@@ -69,8 +70,7 @@ class a1_ros:
         self.servo_pub[9] = rospy.Publisher("/" + self.robot_name + "_gazebo/RL_hip_controller/command", MotorCmd, queue_size=10)
         self.servo_pub[10] = rospy.Publisher("/" + self.robot_name + "_gazebo/RL_thigh_controller/command", MotorCmd, queue_size=10)
         self.servo_pub[11] = rospy.Publisher("/" + self.robot_name + "_gazebo/RL_calf_controller/command", MotorCmd, queue_size=10)
-
-
+        time.sleep(2)
 
     def imuCallback(self, msg):
         # print("IMU Callback run")
@@ -218,8 +218,17 @@ class a1_ros:
     def getBaseOrientation(self):
         return self.lowState.imu.quaternion
 
-    def sendTorqueCmd(self,torques):
-        for j in range(12):
-            self.lowCmd.motorCmd[j].tau = torques[j]
+    def receive_observation(self):
+        return self.lowState
+
+    def send_command(self, command):
+        self.sendTorqueCmd(command)
+        
+    def sendTorqueCmd(self,cmd):
+        for motor_id in range(12):
+            self.lowCmd.motorCmd[motor_id].q=cmd[motor_id * 5]
+            self.lowCmd.motorCmd[motor_id].Kp=cmd[motor_id * 5+1]
+            self.lowCmd.motorCmd[motor_id].Kd=cmd[motor_id * 5+3]
+            self.lowCmd.motorCmd[motor_id].tau=cmd[motor_id * 5+4]
         for m in range(12):
             self.servo_pub[m].publish(self.lowCmd.motorCmd[m])

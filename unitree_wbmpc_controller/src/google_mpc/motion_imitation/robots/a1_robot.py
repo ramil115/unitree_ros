@@ -34,7 +34,7 @@ from motion_imitation.robots import a1_robot_velocity_estimator
 from motion_imitation.robots import minitaur
 from motion_imitation.robots import robot_config
 from motion_imitation.envs import locomotion_gym_config
-from robot_interface import RobotInterface  # pytype: disable=import-error
+from motion_imitation.robots import a1_gazebo  # pytype: disable=import-error
 
 NUM_MOTORS = 12
 NUM_LEGS = 4
@@ -166,7 +166,7 @@ class A1Robot(a1.A1):
         self)
 
     # Initiate UDP for robot state and actions
-    self._robot_interface = RobotInterface()
+    self._robot_interface = a1_gazebo.a1_ros('a1')
     self._robot_interface.send_command(np.zeros(60, dtype=np.float32))
 
     kwargs['on_rack'] = True
@@ -194,6 +194,15 @@ class A1Robot(a1.A1):
     if self._init_complete:
       # self._SetRobotStateInSim(self._motor_angles, self._motor_velocities)
       self._velocity_estimator.update(self._raw_state)
+    '''
+    motor_angles = [state[0] for state in self._pybullet_client.getJointStates(self.quadruped, self._motor_id_list)]
+    motor_angles = np.multiply(
+        np.asarray(motor_angles) - np.asarray(self._motor_offset),
+        self._motor_direction)
+    print()
+    print(self._motor_angles-motor_angles)
+    print()
+    '''
 
   def _SetRobotStateInSim(self, motor_angles, motor_velocities):
     self._pybullet_client.resetBasePositionAndOrientation(
@@ -270,6 +279,7 @@ class A1Robot(a1.A1):
       raise ValueError('Unknown motor control mode for A1 robot: {}.'.format(
           motor_control_mode))
 
+    
     self._robot_interface.send_command(command)
 
   def Reset(self, reload_urdf=True, default_motor_angles=None, reset_time=3.0):
@@ -285,15 +295,15 @@ class A1Robot(a1.A1):
 
     current_motor_angles = self.GetMotorAngles()
 
+  
     # Stand up in 1.5 seconds, and keep the behavior in this way.
-    standup_time = min(reset_time, 1.5)
+    standup_time = min(reset_time, 1)
     for t in np.arange(0, reset_time, self.time_step * self._action_repeat):
       blend_ratio = min(t / standup_time, 1)
       action = blend_ratio * default_motor_angles + (
           1 - blend_ratio) * current_motor_angles
       self.Step(action, robot_config.MotorControlMode.POSITION)
       time.sleep(self.time_step * self._action_repeat)
-
     if self._enable_action_filter:
       self._ResetActionFilter()
 

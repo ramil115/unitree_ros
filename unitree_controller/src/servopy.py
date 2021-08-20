@@ -12,7 +12,8 @@ from geometry_msgs.msg import WrenchStamped
 servo_pub = [None] * 12
 lowCmd = LowCmd()
 lowState = LowState()
-
+DEFAULT_POS = [0.0, 0.9, -1.8, 0.0, 0.9, -1.8, 
+                      0.0, 0.9, -1.8, 0.0, 0.9, -1.8]
 
 class multiThread:
     def __init__(self, rname):
@@ -188,15 +189,14 @@ def paramInit():
     for i in range(12):
         lowCmd.motorCmd[i].q = lowState.motorState[i].q
 
-def stand():   
-    pos = [0.0, 0.9, -1.8, 0.0, 0.9, -1.8, 
-                      0.0, 0.9, -1.8, 0.0, 0.9, -1.8]
+def stand(q):   
+    pos = q
     moveAllPosition(pos, 2*100);
 
 
-def motion_init():
+def motion_init(q):
     paramInit()
-    stand()
+    stand(q)
 
 
 def sendServoCmd():
@@ -218,7 +218,7 @@ def moveAllPosition(targetPos, duration):
 
 
 
-def servo():
+def servo(q):
 
     rospy.init_node('listener', anonymous=True)
     mt = multiThread("a1")
@@ -243,7 +243,7 @@ def servo():
     servo_pub[10] = rospy.Publisher("/" + robot_name + "_gazebo/RL_thigh_controller/command", MotorCmd, queue_size=10)
     servo_pub[11] = rospy.Publisher("/" + robot_name + "_gazebo/RL_calf_controller/command", MotorCmd, queue_size=10)
 
-    motion_init()
+    motion_init(q)
 
     # rate = rospy.Rate(100)
     # while not rospy.is_shutdown():
@@ -255,6 +255,13 @@ def servo():
 
 if __name__ == '__main__':    
     try:
-        servo()
+        import sys
+        if len(sys.argv)>1:
+            arr = sys.argv[1].split(',')
+            servoPos = [float(i) for i in arr]
+            print(servoPos)
+            servo(servoPos)
+        else:
+            servo(DEFAULT_POS)
     except rospy.ROSInterruptException:
         pass

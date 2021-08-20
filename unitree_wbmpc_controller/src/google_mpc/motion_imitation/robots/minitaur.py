@@ -35,8 +35,6 @@ from motion_imitation.robots import robot_config
 from motion_imitation.robots import action_filter
 from motion_imitation.robots import kinematics
 
-from motion_imitation.robots.a1_gazebo import a1_ros
-
 INIT_POSITION = [0, 0, .2]
 INIT_RACK_POSITION = [0, 0, 1]
 INIT_ORIENTATION = [0, 0, 0, 1]
@@ -190,8 +188,6 @@ class Minitaur(object):
     self._enable_action_interpolation = enable_action_interpolation
     self._enable_action_filter = enable_action_filter
     self._last_action = None
-
-    self._ros = a1_ros("a1")
 
     if not motor_model_class:
       raise ValueError("Must provide a motor model class!")
@@ -508,8 +504,6 @@ class Minitaur(object):
         jointIndices=motor_ids,
         controlMode=self._pybullet_client.TORQUE_CONTROL,
         forces=torques)
-    self._ros.sendTorqueCmd(torques) #ROS
-    
 
   def _SetDesiredMotorAngleByName(self, motor_name, desired_angle):
     self._SetDesiredMotorAngleById(self._joint_name_to_id[motor_name],
@@ -729,8 +723,6 @@ class Minitaur(object):
                                                  linkIndexA=-1,
                                                  linkIndexB=link_id_2))
       contacts.append(contact_1 or contact_2)
-    
-    contacts = self._ros.getContactPoints() #ROS
     return contacts
 
   def GetFootPositionsInBaseFrame(self):
@@ -1161,14 +1153,10 @@ class Minitaur(object):
     This function is called once per step. The observations are only updated
     when this function is called.
     """
-    #self._joint_states = self._pybullet_client.getJointStates(
-    #    self.quadruped, self._motor_id_list)
-    self._joint_states =  self._ros.getJointStates() #ROS
-    #self._base_position, orientation = (
-    #    self._pybullet_client.getBasePositionAndOrientation(self.quadruped))
-
-    self._base_position, orientation = ([], #ROS
-        self._ros.getBaseOrientation())
+    self._joint_states = self._pybullet_client.getJointStates(
+        self.quadruped, self._motor_id_list)
+    self._base_position, orientation = (
+        self._pybullet_client.getBasePositionAndOrientation(self.quadruped))
     # Computes the relative orientation relative to the robot's
     # initial_orientation.
     _, self._base_orientation = self._pybullet_client.multiplyTransforms(

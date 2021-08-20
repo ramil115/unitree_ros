@@ -17,19 +17,18 @@ import time
 import pybullet_data
 from pybullet_utils import bullet_client
 import pybullet  # pytype:disable=import-error
-import rospy
+
 from mpc_controller import com_velocity_estimator
 from mpc_controller import gait_generator as gait_generator_lib
 from mpc_controller import locomotion_controller
 from mpc_controller import openloop_gait_generator
 from mpc_controller import raibert_swing_leg_controller
-from mpc_controller import torque_stance_leg_controller
+#from mpc_controller import torque_stance_leg_controller
 #import mpc_osqp
-# from mpc_controller import torque_stance_leg_controller_quadprog as torque_stance_leg_controller
+from mpc_controller import torque_stance_leg_controller_quadprog as torque_stance_leg_controller
 
 
 from motion_imitation.robots import a1
-from motion_imitation.robots import a1_gazebo
 from motion_imitation.robots import robot_config
 from motion_imitation.robots.gamepad import gamepad_reader
 
@@ -40,7 +39,7 @@ flags.DEFINE_bool("use_gamepad", False,
 flags.DEFINE_bool("use_real_robot", False,
                   "whether to use real robot or simulation")
 flags.DEFINE_bool("show_gui", True, "whether to show GUI.")
-flags.DEFINE_float("max_time_secs", 10., "maximum time to run the robot.")
+flags.DEFINE_float("max_time_secs", 20., "maximum time to run the robot.")
 FLAGS = flags.FLAGS
 
 _NUM_SIMULATION_ITERATION_STEPS = 300
@@ -51,15 +50,15 @@ _STANCE_DURATION_SECONDS = [
 ] * 4  # For faster trotting (v > 1.5 ms reduce this to 0.13s).
 
 # Standing
-_DUTY_FACTOR = [1.] * 4
-_INIT_PHASE_FULL_CYCLE = [0., 0., 0., 0.]
+# _DUTY_FACTOR = [1.] * 4
+# _INIT_PHASE_FULL_CYCLE = [0., 0., 0., 0.]
 
-_INIT_LEG_STATE = (
-    gait_generator_lib.LegState.STANCE,
-    gait_generator_lib.LegState.STANCE,
-    gait_generator_lib.LegState.STANCE,
-    gait_generator_lib.LegState.STANCE,
-)
+# _INIT_LEG_STATE = (
+#     gait_generator_lib.LegState.STANCE,
+#     gait_generator_lib.LegState.STANCE,
+#     gait_generator_lib.LegState.STANCE,
+#     gait_generator_lib.LegState.STANCE,
+# )
 
 # Tripod
 # _DUTY_FACTOR = [.8] * 4
@@ -73,25 +72,22 @@ _INIT_LEG_STATE = (
 # )
 
 # Trotting
-# _DUTY_FACTOR = [0.6] * 4
-# _INIT_PHASE_FULL_CYCLE = [0.9, 0, 0, 0.9]
+_DUTY_FACTOR = [0.6] * 4
+_INIT_PHASE_FULL_CYCLE = [0.9, 0, 0, 0.9]
 
-# _INIT_LEG_STATE = (
-#     gait_generator_lib.LegState.SWING,
-#     gait_generator_lib.LegState.STANCE,
-#     gait_generator_lib.LegState.STANCE,
-#     gait_generator_lib.LegState.SWING,
-# )
+_INIT_LEG_STATE = (
+    gait_generator_lib.LegState.SWING,
+    gait_generator_lib.LegState.STANCE,
+    gait_generator_lib.LegState.STANCE,
+    gait_generator_lib.LegState.SWING,
+)
 
 
 def _generate_example_linear_angular_speed(t):
   """Creates an example speed profile based on time for demo purpose."""
-  # vx = 0.6
-  # vy = 0.2
-  # wz = 0.8
-  vx = 0.0
-  vy = 0.0
-  wz = 0.0
+  vx = 0.6
+  vy = 0.2
+  wz = 0.8
 
   time_points = (0, 5, 10, 15, 20, 25, 30)
   speed_points = ((0, 0, 0, 0), (0, 0, 0, wz), (vx, 0, 0, 0), (0, 0, 0, -wz),
@@ -137,8 +133,6 @@ def _setup_controller(robot):
       desired_twisting_speed=desired_twisting_speed,
       desired_body_height=robot.MPC_BODY_HEIGHT
       #,qp_solver = mpc_osqp.QPOASES #or mpc_osqp.OSQP
-      ,body_mass=robot.MPC_BODY_MASS,
-      body_inertia=robot.MPC_BODY_INERTIA
       )
 
   controller = locomotion_controller.LocomotionController(
@@ -156,6 +150,7 @@ def _update_controller_params(controller, lin_speed, ang_speed):
   controller.swing_leg_controller.desired_twisting_speed = ang_speed
   controller.stance_leg_controller.desired_speed = lin_speed
   controller.stance_leg_controller.desired_twisting_speed = ang_speed
+
 
 def main(argv):
   """Runs the locomotion controller example."""
@@ -207,25 +202,13 @@ def main(argv):
   start_time = robot.GetTimeSinceReset()
   current_time = start_time
   com_vels, imu_rates, actions = [], [], []
-
-  from std_srvs.srv    import Empty, EmptyRequest
-  pauseClient=rospy.ServiceProxy('/gazebo/pause_physics',Empty)
-  unpauseClient=rospy.ServiceProxy('/gazebo/unpause_physics',Empty)
-
-  def pause():
-    pauseClient(EmptyRequest())
-
-  def unpause():
-    unpauseClient(EmptyRequest())
-  
-  r = rospy.Rate(100)
   while current_time - start_time < FLAGS.max_time_secs:
-    #time.sleep(0.002) #on some fast computer, works better with sleep on real A1?
-    pause()
+    #time.sleep(0.0008) #on some fast computer, works better with sleep on real A1?
     start_time_robot = current_time
     start_time_wall = time.time()
     # Updates the controller behavior parameters.
     lin_speed, ang_speed, e_stop = command_function(current_time)
+    # print(lin_speed)
     if e_stop:
       logging.info("E-stop kicked, exiting...")
       break
@@ -238,15 +221,12 @@ def main(argv):
     robot.Step(hybrid_action)
     current_time = robot.GetTimeSinceReset()
 
-    unpause()
     if not FLAGS.use_real_robot:
       expected_duration = current_time - start_time_robot
       actual_duration = time.time() - start_time_wall
       if actual_duration < expected_duration:
         time.sleep(expected_duration - actual_duration)
     # print("actual_duration=", actual_duration)
-    r.sleep()
-
   if FLAGS.use_gamepad:
     gamepad.stop()
 
@@ -256,7 +236,7 @@ def main(argv):
              com_vels=com_vels,
              imu_rates=imu_rates)
     logging.info("logged to: {}".format(logdir))
-  
+
 
 if __name__ == "__main__":
   app.run(main)
