@@ -167,7 +167,7 @@ class A1Robot(a1.A1):
 
     # Initiate UDP for robot state and actions
     self._robot_interface = a1_gazebo.a1_ros('a1')
-    self._robot_interface.send_command(np.zeros(60, dtype=np.float32))
+    #self._robot_interface.send_command(np.zeros(60, dtype=np.float32)) Causes a jerk during the reset process
 
     kwargs['on_rack'] = True
     super(A1Robot, self).__init__(pybullet_client,
@@ -192,17 +192,9 @@ class A1Robot(a1.A1):
     self._joint_states = np.array(
         list(zip(self._motor_angles, self._motor_velocities)))
     if self._init_complete:
-      # self._SetRobotStateInSim(self._motor_angles, self._motor_velocities)
+      #self._SetRobotStateInSim(self._motor_angles, self._motor_velocities)
       self._velocity_estimator.update(self._raw_state)
-    '''
-    motor_angles = [state[0] for state in self._pybullet_client.getJointStates(self.quadruped, self._motor_id_list)]
-    motor_angles = np.multiply(
-        np.asarray(motor_angles) - np.asarray(self._motor_offset),
-        self._motor_direction)
-    print()
-    print(self._motor_angles-motor_angles)
-    print()
-    '''
+
 
   def _SetRobotStateInSim(self, motor_angles, motor_velocities):
     self._pybullet_client.resetBasePositionAndOrientation(
@@ -278,7 +270,6 @@ class A1Robot(a1.A1):
     else:
       raise ValueError('Unknown motor control mode for A1 robot: {}.'.format(
           motor_control_mode))
-
     
     self._robot_interface.send_command(command)
 
@@ -297,7 +288,7 @@ class A1Robot(a1.A1):
 
   
     # Stand up in 1.5 seconds, and keep the behavior in this way.
-    standup_time = min(reset_time, 1)
+    standup_time = min(reset_time, 2)
     for t in np.arange(0, reset_time, self.time_step * self._action_repeat):
       blend_ratio = min(t / standup_time, 1)
       action = blend_ratio * default_motor_angles + (
