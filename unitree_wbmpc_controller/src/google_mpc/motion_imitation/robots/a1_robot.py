@@ -233,7 +233,7 @@ class A1Robot(a1.A1):
     return self._velocity_estimator.estimated_velocity.copy()
 
   def GetFootContacts(self):
-    return np.array(self._raw_state.footForce) > 20
+    return np.array(self._raw_state.footForce) > 0.1
 
   def GetTimeSinceReset(self):
     return time.time() - self._last_reset_time
