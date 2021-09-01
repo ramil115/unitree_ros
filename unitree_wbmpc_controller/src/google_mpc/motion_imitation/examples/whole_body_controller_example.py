@@ -37,10 +37,10 @@ from motion_imitation.robots.gamepad import gamepad_reader
 flags.DEFINE_string("logdir", None, "where to log trajectories.")
 flags.DEFINE_bool("use_gamepad", False,
                   "whether to use gamepad to provide control input.")
-flags.DEFINE_bool("use_real_robot", False,
+flags.DEFINE_bool("use_real_robot", True,
                   "whether to use real robot or simulation")
 flags.DEFINE_bool("show_gui", True, "whether to show GUI.")
-flags.DEFINE_float("max_time_secs", 30., "maximum time to run the robot.")
+flags.DEFINE_float("max_time_secs", 5., "maximum time to run the robot.")
 FLAGS = flags.FLAGS
 
 _NUM_SIMULATION_ITERATION_STEPS = 300
@@ -51,15 +51,15 @@ _STANCE_DURATION_SECONDS = [
 ] * 4  # For faster trotting (v > 1.5 ms reduce this to 0.13s).
 
 # Standing
-_DUTY_FACTOR = [1.] * 4
-_INIT_PHASE_FULL_CYCLE = [0., 0., 0., 0.]
+# _DUTY_FACTOR = [1.] * 4
+# _INIT_PHASE_FULL_CYCLE = [0., 0., 0., 0.]
 
-_INIT_LEG_STATE = (
-    gait_generator_lib.LegState.STANCE,
-    gait_generator_lib.LegState.STANCE,
-    gait_generator_lib.LegState.STANCE,
-    gait_generator_lib.LegState.STANCE,
-)
+# _INIT_LEG_STATE = (
+#     gait_generator_lib.LegState.STANCE,
+#     gait_generator_lib.LegState.STANCE,
+#     gait_generator_lib.LegState.STANCE,
+#     gait_generator_lib.LegState.STANCE,
+# )
 
 # Tripod
 # _DUTY_FACTOR = [.8] * 4
@@ -73,15 +73,15 @@ _INIT_LEG_STATE = (
 # )
 
 # Trotting
-# _DUTY_FACTOR = [0.6] * 4
-# _INIT_PHASE_FULL_CYCLE = [0.9, 0, 0, 0.9]
+_DUTY_FACTOR = [0.6] * 4
+_INIT_PHASE_FULL_CYCLE = [0.9, 0, 0, 0.9]
 
-# _INIT_LEG_STATE = (
-#     gait_generator_lib.LegState.SWING,
-#     gait_generator_lib.LegState.STANCE,
-#     gait_generator_lib.LegState.STANCE,
-#     gait_generator_lib.LegState.SWING,
-# )
+_INIT_LEG_STATE = (
+    gait_generator_lib.LegState.SWING,
+    gait_generator_lib.LegState.STANCE,
+    gait_generator_lib.LegState.STANCE,
+    gait_generator_lib.LegState.SWING,
+)
 
 
 def _generate_example_linear_angular_speed(t):
@@ -224,7 +224,7 @@ def main(argv):
     actions.append(hybrid_action)
     robot.Step(hybrid_action)
     current_time = robot.GetTimeSinceReset()
-
+    # print(time.time()-start_time_wall)
     if not FLAGS.use_real_robot:
       expected_duration = current_time - start_time_robot
       actual_duration = time.time() - start_time_wall
