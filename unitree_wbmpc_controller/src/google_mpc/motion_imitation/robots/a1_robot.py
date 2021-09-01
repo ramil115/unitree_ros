@@ -27,7 +27,7 @@ import math
 import re
 import numpy as np
 import time
-
+import rospy
 from motion_imitation.robots import laikago_pose_utils
 from motion_imitation.robots import a1
 from motion_imitation.robots import a1_robot_velocity_estimator
@@ -53,7 +53,7 @@ MOTOR_NAMES = [
     "RL_lower_joint",
 ]
 INIT_RACK_POSITION = [0, 0, 1]
-INIT_POSITION = [0, 0, 0.48]
+INIT_POSITION = [0, 0, 0.32]
 JOINT_DIRECTIONS = np.ones(12)
 HIP_JOINT_OFFSET = 0.0
 UPPER_LEG_JOINT_OFFSET = 0.0
@@ -103,7 +103,7 @@ _LINK_A_FIELD_NUMBER = 3
 class A1Robot(a1.A1):
   """Interface for real A1 robot."""
   MPC_BODY_MASS = 108 / 9.8
-  MPC_BODY_INERTIA = np.array((0.24, 0, 0, 0, 0.80, 0, 0, 0, 1.00))
+  MPC_BODY_INERTIA = np.array((0.017, 0, 0, 0, 0.057, 0, 0, 0, 0.064)) * 4.
 
   MPC_BODY_HEIGHT = 0.24
   ACTION_CONFIG = [
@@ -148,6 +148,9 @@ class A1Robot(a1.A1):
   def __init__(self, pybullet_client, time_step=0.002, **kwargs):
     """Initializes the robot class."""
     # Initialize pd gain vector
+    
+    # Initiate UDP for robot state and actions
+    self._robot_interface = a1_gazebo.a1_ros('a1')
     self.motor_kps = np.array([ABDUCTION_P_GAIN, HIP_P_GAIN, KNEE_P_GAIN] * 4)
     self.motor_kds = np.array([ABDUCTION_D_GAIN, HIP_D_GAIN, KNEE_D_GAIN] * 4)
     self._pybullet_client = pybullet_client
@@ -161,12 +164,10 @@ class A1Robot(a1.A1):
     self._motor_angles = np.zeros(12)
     self._motor_velocities = np.zeros(12)
     self._joint_states = None
-    self._last_reset_time = time.time()
+    self._last_reset_time = rospy.get_time()
     self._velocity_estimator = a1_robot_velocity_estimator.VelocityEstimator(
         self)
 
-    # Initiate UDP for robot state and actions
-    self._robot_interface = a1_gazebo.a1_ros('a1')
     #self._robot_interface.send_command(np.zeros(60, dtype=np.float32)) Causes a jerk during the reset process
 
     kwargs['on_rack'] = True
@@ -236,7 +237,7 @@ class A1Robot(a1.A1):
     return np.array(self._raw_state.footForce) > 0.1
 
   def GetTimeSinceReset(self):
-    return time.time() - self._last_reset_time
+    return rospy.get_time() - self._last_reset_time
 
   def GetBaseOrientation(self):
     return self._base_orientation.copy()
@@ -301,7 +302,7 @@ class A1Robot(a1.A1):
     self._velocity_estimator.reset()
     self._state_action_counter = 0
     self._step_counter = 0
-    self._last_reset_time = time.time()
+    self._last_reset_time = rospy.get_time()
 
   def Terminate(self):
     self._is_alive = False
