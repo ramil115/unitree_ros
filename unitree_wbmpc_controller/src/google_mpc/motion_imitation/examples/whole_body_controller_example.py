@@ -13,6 +13,7 @@ import numpy as np
 import os
 import scipy.interpolate
 import time
+import matplotlib.pyplot as plt
 
 import pybullet_data
 from pybullet_utils import bullet_client
@@ -23,7 +24,7 @@ from mpc_controller import gait_generator as gait_generator_lib
 from mpc_controller import locomotion_controller
 from mpc_controller import openloop_gait_generator
 from mpc_controller import raibert_swing_leg_controller
-#from mpc_controller import torque_stance_leg_controller
+# from mpc_controller import torque_stance_leg_controller
 #import mpc_osqp
 from mpc_controller import torque_stance_leg_controller_quadprog as torque_stance_leg_controller
 
@@ -39,7 +40,7 @@ flags.DEFINE_bool("use_gamepad", False,
 flags.DEFINE_bool("use_real_robot", False,
                   "whether to use real robot or simulation")
 flags.DEFINE_bool("show_gui", True, "whether to show GUI.")
-flags.DEFINE_float("max_time_secs", 20., "maximum time to run the robot.")
+flags.DEFINE_float("max_time_secs", 30., "maximum time to run the robot.")
 FLAGS = flags.FLAGS
 
 _NUM_SIMULATION_ITERATION_STEPS = 300
@@ -50,15 +51,15 @@ _STANCE_DURATION_SECONDS = [
 ] * 4  # For faster trotting (v > 1.5 ms reduce this to 0.13s).
 
 # Standing
-# _DUTY_FACTOR = [1.] * 4
-# _INIT_PHASE_FULL_CYCLE = [0., 0., 0., 0.]
+_DUTY_FACTOR = [1.] * 4
+_INIT_PHASE_FULL_CYCLE = [0., 0., 0., 0.]
 
-# _INIT_LEG_STATE = (
-#     gait_generator_lib.LegState.STANCE,
-#     gait_generator_lib.LegState.STANCE,
-#     gait_generator_lib.LegState.STANCE,
-#     gait_generator_lib.LegState.STANCE,
-# )
+_INIT_LEG_STATE = (
+    gait_generator_lib.LegState.STANCE,
+    gait_generator_lib.LegState.STANCE,
+    gait_generator_lib.LegState.STANCE,
+    gait_generator_lib.LegState.STANCE,
+)
 
 # Tripod
 # _DUTY_FACTOR = [.8] * 4
@@ -72,22 +73,25 @@ _STANCE_DURATION_SECONDS = [
 # )
 
 # Trotting
-_DUTY_FACTOR = [0.6] * 4
-_INIT_PHASE_FULL_CYCLE = [0.9, 0, 0, 0.9]
+# _DUTY_FACTOR = [0.6] * 4
+# _INIT_PHASE_FULL_CYCLE = [0.9, 0, 0, 0.9]
 
-_INIT_LEG_STATE = (
-    gait_generator_lib.LegState.SWING,
-    gait_generator_lib.LegState.STANCE,
-    gait_generator_lib.LegState.STANCE,
-    gait_generator_lib.LegState.SWING,
-)
+# _INIT_LEG_STATE = (
+#     gait_generator_lib.LegState.SWING,
+#     gait_generator_lib.LegState.STANCE,
+#     gait_generator_lib.LegState.STANCE,
+#     gait_generator_lib.LegState.SWING,
+# )
 
 
 def _generate_example_linear_angular_speed(t):
   """Creates an example speed profile based on time for demo purpose."""
-  vx = 0.6
-  vy = 0.2
-  wz = 0.8
+  # vx = 0.6
+  # vy = 0.2
+  # wz = 0.8
+  vx = 0.0
+  vy = 0.0
+  wz = 0.0
 
   time_points = (0, 5, 10, 15, 20, 25, 30)
   speed_points = ((0, 0, 0, 0), (0, 0, 0, wz), (vx, 0, 0, 0), (0, 0, 0, -wz),
@@ -229,6 +233,16 @@ def main(argv):
     # print("actual_duration=", actual_duration)
   if FLAGS.use_gamepad:
     gamepad.stop()
+
+  temp=np.zeros((len(actions),12))
+  for i in range(len(actions)):
+    temp[i][:] = actions[i][4:60:5]
+  plt.plot(temp)
+  plt.legend(['FR_hip_torque','FR_upper_torque','FR_lower_torque',
+              'FL_hip_torque','FL_upper_torque','FL_lower_torque',
+              'RR_hip_torque','RR_upper_torque','RR_lower_torque',
+              'RL_hip_torque','RL_upper_torque','RL_lower_torque'])
+  plt.show()
 
   if FLAGS.logdir:
     np.savez(os.path.join(logdir, 'action.npz'),

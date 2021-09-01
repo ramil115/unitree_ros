@@ -15,7 +15,7 @@ from mpc_controller import leg_controller
 from mpc_controller import qp_torque_optimizer
 
 _FORCE_DIMENSION = 3
-KP = np.array((0., 0., 100., 100., 100., 0.))
+KP = np.array((100., 100., 100., 100., 100., 100.))
 KD = np.array((40., 30., 10., 10., 10., 30.))
 MAX_DDQ = np.array((10., 10., 10., 20., 20., 20.))
 MIN_DDQ = -MAX_DDQ
@@ -88,6 +88,27 @@ class TorqueStanceLegController(leg_controller.LegController):
       useful_heights = contacts * (-foot_positions_world_frame[:, 2])
       return np.sum(useful_heights) / np.sum(contacts)
 
+  def _estimate_robot_delta_xy(self, contacts):
+    if np.sum(contacts) == 0:
+      # All foot in air, no way to estimate
+      return np.array([0,0])
+    else:
+      base_orientation = self._robot.GetBaseOrientation()
+      rot_mat = self._robot.pybullet_client.getMatrixFromQuaternion(
+          base_orientation)
+      rot_mat = np.array(rot_mat).reshape((3, 3))
+
+      foot_positions = self._robot.GetFootPositionsInBaseFrame()
+      foot_positions_world_frame = (rot_mat.dot(foot_positions.T)).T
+      foot_positions_world_frame_0 = np.array([[ 0.171, -0.134, -0.242],
+                                               [ 0.171,  0.13 , -0.242],
+                                               [-0.182, -0.134, -0.242],
+                                               [-0.182,  0.13 , -0.242]])
+      diff = foot_positions_world_frame_0 - foot_positions_world_frame
+      useful_x = contacts * (diff[:, 0])
+      useful_y = contacts * (diff[:, 1])
+      return np.array((np.sum(useful_x) / np.sum(contacts), np.sum(useful_y) / np.sum(contacts)))
+
   def get_action(self):
     """Computes the torque for stance legs."""
     # Actual q and dq
@@ -97,11 +118,14 @@ class TorqueStanceLegController(leg_controller.LegController):
          for leg_state in self._gait_generator.desired_leg_state],
         dtype=np.int32)
 
-    robot_com_position = np.array(
-        (0., 0., self._estimate_robot_height(contacts)))
+    # robot_com_position = np.array(
+    #     (0., 0., self._estimate_robot_height(contacts)))
+    robot_com_position = np.append(
+        self._estimate_robot_delta_xy(contacts), self._estimate_robot_height(contacts))
+    # print(self._estimate_robot_delta_xy(contacts))
     robot_com_velocity = self._state_estimator.com_velocity_body_frame
     robot_com_roll_pitch_yaw = np.array(self._robot.GetBaseRollPitchYaw())
-    robot_com_roll_pitch_yaw[2] = 0  # To prevent yaw drifting
+    # robot_com_roll_pitch_yaw[2] = 0  # To prevent yaw drifting
     robot_com_roll_pitch_yaw_rate = self._robot.GetBaseRollPitchYawRate()
     robot_q = np.hstack((robot_com_position, robot_com_roll_pitch_yaw))
     robot_dq = np.hstack((robot_com_velocity, robot_com_roll_pitch_yaw_rate))
