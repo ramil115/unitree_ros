@@ -155,6 +155,23 @@ def _update_controller_params(controller, lin_speed, ang_speed):
   controller.stance_leg_controller.desired_speed = lin_speed
   controller.stance_leg_controller.desired_twisting_speed = ang_speed
 
+from gazebo_msgs.msg import  ODEPhysics
+from gazebo_msgs.srv import SetPhysicsProperties, GetPhysicsProperties
+from geometry_msgs.msg import Vector3
+import rospy
+from std_msgs.msg import Float64
+
+def slowDownSim(rate=0.00025):
+  set_physics = rospy.ServiceProxy('/gazebo/set_physics_properties', SetPhysicsProperties)
+  get_physics = rospy.ServiceProxy('/gazebo/get_physics_properties', GetPhysicsProperties)
+  time_step = Float64(rate) #max_time_step
+  max_update_rate = Float64(1000.0)
+  gravity = Vector3()
+  gravity.x = 0.0
+  gravity.y = 0.0
+  gravity.z = -9.8
+  ode_config = get_physics().ode_config
+  set_physics(time_step.data, max_update_rate.data, gravity, ode_config)
 
 def main(argv):
   """Runs the locomotion controller example."""
@@ -206,6 +223,8 @@ def main(argv):
   start_time = robot.GetTimeSinceReset()
   current_time = start_time
   com_vels, imu_rates, actions = [], [], []
+
+  slowDownSim()
   while current_time - start_time < FLAGS.max_time_secs:
     #time.sleep(0.0008) #on some fast computer, works better with sleep on real A1?
     start_time_robot = current_time
