@@ -7,4 +7,4 @@
 
 *.pyc 
 
-unitree_wbmpc_controller/src/google_mpc/workspace.code-workspace
+*.code-workspace
