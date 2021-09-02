@@ -40,7 +40,7 @@ flags.DEFINE_bool("use_gamepad", False,
 flags.DEFINE_bool("use_real_robot", True,
                   "whether to use real robot or simulation")
 flags.DEFINE_bool("show_gui", True, "whether to show GUI.")
-flags.DEFINE_float("max_time_secs", 5., "maximum time to run the robot.")
+flags.DEFINE_float("max_time_secs", 30., "maximum time to run the robot.")
 FLAGS = flags.FLAGS
 
 _NUM_SIMULATION_ITERATION_STEPS = 300
@@ -86,12 +86,12 @@ _INIT_LEG_STATE = (
 
 def _generate_example_linear_angular_speed(t):
   """Creates an example speed profile based on time for demo purpose."""
-  # vx = 0.6
-  # vy = 0.2
-  # wz = 0.8
-  vx = 0.0
-  vy = 0.0
-  wz = 0.0
+  vx = 0.6
+  vy = 0.2
+  wz = 0.8
+  # vx = 0.0
+  # vy = 0.0
+  # wz = 0.0
 
   time_points = (0, 5, 10, 15, 20, 25, 30)
   speed_points = ((0, 0, 0, 0), (0, 0, 0, wz), (vx, 0, 0, 0), (0, 0, 0, -wz),
@@ -224,7 +224,7 @@ def main(argv):
     actions.append(hybrid_action)
     robot.Step(hybrid_action)
     current_time = robot.GetTimeSinceReset()
-    # print(time.time()-start_time_wall)
+    print(current_time)
     if not FLAGS.use_real_robot:
       expected_duration = current_time - start_time_robot
       actual_duration = time.time() - start_time_wall
