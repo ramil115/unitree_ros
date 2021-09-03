@@ -86,12 +86,12 @@ _INIT_LEG_STATE = (
 
 def _generate_example_linear_angular_speed(t):
   """Creates an example speed profile based on time for demo purpose."""
-  vx = 0.6
-  vy = 0.2
-  wz = 0.8
-  # vx = 0.0
-  # vy = 0.0
-  # wz = 0.0
+  # vx = 0.6
+  # vy = 0.2
+  # wz = 0.8
+  vx = 0.0
+  vy = 0.0
+  wz = 0.0
 
   time_points = (0, 5, 10, 15, 20, 25, 30)
   speed_points = ((0, 0, 0, 0), (0, 0, 0, wz), (vx, 0, 0, 0), (0, 0, 0, -wz),
@@ -223,7 +223,7 @@ def main(argv):
   start_time = robot.GetTimeSinceReset()
   current_time = start_time
   com_vels, imu_rates, actions = [], [], []
-  r = rospy.Rate(500)
+  r = rospy.Rate(1000)
 
   slowDownSim()
   while not rospy.is_shutdown() or current_time - start_time < FLAGS.max_time_secs:
