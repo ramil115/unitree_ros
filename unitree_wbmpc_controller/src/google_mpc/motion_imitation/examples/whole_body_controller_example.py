@@ -223,9 +223,10 @@ def main(argv):
   start_time = robot.GetTimeSinceReset()
   current_time = start_time
   com_vels, imu_rates, actions = [], [], []
+  r = rospy.Rate(500)
 
   slowDownSim()
-  while current_time - start_time < FLAGS.max_time_secs:
+  while not rospy.is_shutdown() or current_time - start_time < FLAGS.max_time_secs:
     #time.sleep(0.0008) #on some fast computer, works better with sleep on real A1?
     start_time_robot = current_time
     start_time_wall = time.time()
@@ -250,6 +251,7 @@ def main(argv):
       if actual_duration < expected_duration:
         time.sleep(expected_duration - actual_duration)
     # print("actual_duration=", actual_duration)
+    r.sleep()
   if FLAGS.use_gamepad:
     gamepad.stop()
 
