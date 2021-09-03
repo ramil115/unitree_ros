@@ -58,18 +58,18 @@ class a1_ros:
         
         self.servo_pub = [None] * 12
 
-        self.servo_pub[0] = rospy.Publisher("/" + self.robot_name + "_gazebo/FR_hip_controller/command", MotorCmd, queue_size=10)
-        self.servo_pub[1] = rospy.Publisher("/" + self.robot_name + "_gazebo/FR_thigh_controller/command", MotorCmd, queue_size=10)
-        self.servo_pub[2] = rospy.Publisher("/" + self.robot_name + "_gazebo/FR_calf_controller/command", MotorCmd, queue_size=10)
-        self.servo_pub[3] = rospy.Publisher("/" + self.robot_name + "_gazebo/FL_hip_controller/command", MotorCmd, queue_size=10)
-        self.servo_pub[4] = rospy.Publisher("/" + self.robot_name + "_gazebo/FL_thigh_controller/command", MotorCmd, queue_size=10)
-        self.servo_pub[5] = rospy.Publisher("/" + self.robot_name + "_gazebo/FL_calf_controller/command", MotorCmd, queue_size=10)
-        self.servo_pub[6] = rospy.Publisher("/" + self.robot_name + "_gazebo/RR_hip_controller/command", MotorCmd, queue_size=10)
-        self.servo_pub[7] = rospy.Publisher("/" + self.robot_name + "_gazebo/RR_thigh_controller/command", MotorCmd, queue_size=10)
-        self.servo_pub[8] = rospy.Publisher("/" + self.robot_name + "_gazebo/RR_calf_controller/command", MotorCmd, queue_size=10)
-        self.servo_pub[9] = rospy.Publisher("/" + self.robot_name + "_gazebo/RL_hip_controller/command", MotorCmd, queue_size=10)
-        self.servo_pub[10] = rospy.Publisher("/" + self.robot_name + "_gazebo/RL_thigh_controller/command", MotorCmd, queue_size=10)
-        self.servo_pub[11] = rospy.Publisher("/" + self.robot_name + "_gazebo/RL_calf_controller/command", MotorCmd, queue_size=10)
+        self.servo_pub[0] = rospy.Publisher("/" + self.robot_name + "_gazebo/FR_hip_controller/command", MotorCmd, queue_size=1)
+        self.servo_pub[1] = rospy.Publisher("/" + self.robot_name + "_gazebo/FR_thigh_controller/command", MotorCmd, queue_size=1)
+        self.servo_pub[2] = rospy.Publisher("/" + self.robot_name + "_gazebo/FR_calf_controller/command", MotorCmd, queue_size=1)
+        self.servo_pub[3] = rospy.Publisher("/" + self.robot_name + "_gazebo/FL_hip_controller/command", MotorCmd, queue_size=1)
+        self.servo_pub[4] = rospy.Publisher("/" + self.robot_name + "_gazebo/FL_thigh_controller/command", MotorCmd, queue_size=1)
+        self.servo_pub[5] = rospy.Publisher("/" + self.robot_name + "_gazebo/FL_calf_controller/command", MotorCmd, queue_size=1)
+        self.servo_pub[6] = rospy.Publisher("/" + self.robot_name + "_gazebo/RR_hip_controller/command", MotorCmd, queue_size=1)
+        self.servo_pub[7] = rospy.Publisher("/" + self.robot_name + "_gazebo/RR_thigh_controller/command", MotorCmd, queue_size=1)
+        self.servo_pub[8] = rospy.Publisher("/" + self.robot_name + "_gazebo/RR_calf_controller/command", MotorCmd, queue_size=1)
+        self.servo_pub[9] = rospy.Publisher("/" + self.robot_name + "_gazebo/RL_hip_controller/command", MotorCmd, queue_size=1)
+        self.servo_pub[10] = rospy.Publisher("/" + self.robot_name + "_gazebo/RL_thigh_controller/command", MotorCmd, queue_size=1)
+        self.servo_pub[11] = rospy.Publisher("/" + self.robot_name + "_gazebo/RL_calf_controller/command", MotorCmd, queue_size=1)
         time.sleep(2)
 
     def imuCallback(self, msg):
