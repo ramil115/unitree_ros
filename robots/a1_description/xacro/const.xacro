@@ -101,4 +101,11 @@
     <!-- foot -->
     <xacro:property name="foot_mass" value="0.06"/>
 
+    <!-- foot friction -->
+    <xacro:property name="foot_mu1" value="1.0"/>
+    <xacro:property name="foot_mu2" value="1.0"/>
+    <xacro:property name="foot_minDepth" value="0.0002"/>
+    <xacro:property name="foot_kp" value="1000000.0"/>
+    <xacro:property name="foot_kd" value="100.0"/>
+
 </robot>
