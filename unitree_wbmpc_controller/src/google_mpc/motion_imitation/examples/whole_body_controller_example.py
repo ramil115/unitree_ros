@@ -40,7 +40,7 @@ flags.DEFINE_bool("use_gamepad", False,
 flags.DEFINE_bool("use_real_robot", True,
                   "whether to use real robot or simulation")
 flags.DEFINE_bool("show_gui", True, "whether to show GUI.")
-flags.DEFINE_float("max_time_secs", 30., "maximum time to run the robot.")
+flags.DEFINE_float("max_time_secs", 10., "maximum time to run the robot.")
 FLAGS = flags.FLAGS
 
 _NUM_SIMULATION_ITERATION_STEPS = 300
@@ -94,7 +94,7 @@ def _generate_example_linear_angular_speed(t):
   # wz = 0.0
 
   time_points = (0, 5, 10, 15, 20, 25, 30)
-  speed_points = ((0, 0, 0, 0), (0, 0, 0, wz), (vx, 0, 0, 0), (0, 0, 0, -wz),
+  speed_points = ((0, 0, 0, wz), (0, 0, 0, wz), (vx, 0, 0, 0), (0, 0, 0, -wz),
                   (0, -vy, 0, 0), (0, 0, 0, 0), (0, 0, 0, wz))
 
   speed = scipy.interpolate.interp1d(time_points,
@@ -223,10 +223,13 @@ def main(argv):
   start_time = robot.GetTimeSinceReset()
   current_time = start_time
   com_vels, imu_rates, actions = [], [], []
-  r = rospy.Rate(1000)
+  
+  if FLAGS.use_real_robot:
+    r = rospy.Rate(1000)
+    slowDownSim()
 
-  slowDownSim()
-  while not rospy.is_shutdown() or current_time - start_time < FLAGS.max_time_secs:
+
+  while not rospy.is_shutdown() and current_time - start_time < FLAGS.max_time_secs:
     #time.sleep(0.0008) #on some fast computer, works better with sleep on real A1?
     start_time_robot = current_time
     start_time_wall = time.time()
@@ -244,14 +247,15 @@ def main(argv):
     actions.append(hybrid_action)
     robot.Step(hybrid_action)
     current_time = robot.GetTimeSinceReset()
-    #print(current_time)
+    print(current_time)
     if not FLAGS.use_real_robot:
       expected_duration = current_time - start_time_robot
       actual_duration = time.time() - start_time_wall
       if actual_duration < expected_duration:
         time.sleep(expected_duration - actual_duration)
     # print("actual_duration=", actual_duration)
-    r.sleep()
+    if FLAGS.use_real_robot:
+      r.sleep()
   if FLAGS.use_gamepad:
     gamepad.stop()
 
@@ -263,6 +267,14 @@ def main(argv):
               'FL_hip_torque','FL_upper_torque','FL_lower_torque',
               'RR_hip_torque','RR_upper_torque','RR_lower_torque',
               'RL_hip_torque','RL_upper_torque','RL_lower_torque'])
+  plt.show()
+
+  plt.plot(com_vels)
+  plt.legend(['Vx','Vy','Vz'])
+  plt.show()
+
+  plt.plot(imu_rates)
+  plt.legend(['Wx','Wy','Wz'])
   plt.show()
 
   if FLAGS.logdir:
