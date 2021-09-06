@@ -5,6 +5,9 @@ currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentfram
 parentdir = os.path.dirname(os.path.dirname(currentdir))
 os.sys.path.insert(0, parentdir)
 
+import shlex
+from psutil import Popen
+
 from absl import app
 from absl import flags
 from absl import logging
@@ -93,8 +96,8 @@ def _generate_example_linear_angular_speed(t):
   # vy = 0.0
   # wz = 0.0
 
-  time_points = (0, 5, 10, 15, 20, 25, 30)
-  speed_points = ((0, 0, 0, wz), (0, 0, 0, wz), (vx, 0, 0, 0), (0, 0, 0, -wz),
+  time_points = (0, 2, 10, 15, 20, 25, 30)
+  speed_points = ((0, 0, 0, 0), (vx, 0, 0, 0), (vx, 0, 0, 0), (0, 0, 0, -wz),
                   (0, -vy, 0, 0), (0, 0, 0, 0), (0, 0, 0, wz))
 
   speed = scipy.interpolate.interp1d(time_points,
@@ -258,6 +261,10 @@ def main(argv):
       r.sleep()
   if FLAGS.use_gamepad:
     gamepad.stop()
+  
+  # start servopy
+  print("running servo")
+  node_process = Popen(shlex.split('rosrun unitree_controller servopy.py'))
 
   temp=np.zeros((len(actions),12))
   for i in range(len(actions)):
