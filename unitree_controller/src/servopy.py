@@ -256,12 +256,12 @@ def servo(q):
 if __name__ == '__main__':    
     try:
         import sys
-        if len(sys.argv)>1:
-            arr = sys.argv[1].split(',')
-            servoPos = [float(i) for i in arr]
-            print(servoPos)
-            servo(servoPos)
-        else:
-            servo(DEFAULT_POS)
+        # if len(sys.argv)>1:
+        #     arr = sys.argv[1].split(',')
+        #     servoPos = [float(i) for i in arr]
+        #     print(servoPos)
+        #     servo(servoPos)
+        # else:
+        servo(DEFAULT_POS)
     except rospy.ROSInterruptException:
         pass

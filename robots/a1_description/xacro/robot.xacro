@@ -11,8 +11,8 @@
 
     <!-- <xacro:stairs stairs="15" xpos="0" ypos="0" zpos="0" /> -->
 
-    <!-- Rollover Protection mode will add an additional stick on the top, use "true" or "false" to switch it. -->
-    <xacro:property name="rolloverProtection" value="false"/>
+    <!-- Rollover Protection mode will add an additional stick on the top, use 1 or 0 to switch it. -->
+    <xacro:property name="rolloverProtection" value= "0"/>
 
     <!-- Debug mode will hung up the robot, use "true" or "false" to switch it. -->
     <xacro:if value="$(arg DEBUG)">
@@ -63,7 +63,7 @@
         </inertial>
     </link>
 
-    <xacro:if value="${(rolloverProtection == 'true')}">
+    <xacro:if value="${rolloverProtection == 1}">
         <joint name="stick_joint" type="fixed">
             <parent link="trunk"/>
             <child link="stick_link"/>
