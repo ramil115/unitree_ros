@@ -6,8 +6,8 @@ from unitree_legged_msgs.msg import MotorState
 from unitree_legged_msgs.msg import MotorCmd
 from sensor_msgs.msg import Imu
 from geometry_msgs.msg import WrenchStamped
-from .PositionalControl.RobotController import RobotController
-from .PositionalControl.InverseKinematics import robot_IK
+# from .PositionalControl.RobotController import RobotController
+# from .PositionalControl.InverseKinematics import robot_IK
 import time
 
 
@@ -26,8 +26,8 @@ class a1_ros:
         body = [0.366, 0.094]
         legs = [0.,0.08505, 0.2, 0.2] 
 
-        self.a1_robot = RobotController.Robot(body, legs, position_control)
-        self.inverseKinematics = robot_IK.InverseKinematics(body, legs)
+        # self.a1_robot = RobotController.Robot(body, legs, position_control)
+        # self.inverseKinematics = robot_IK.InverseKinematics(body, legs)
 
         self.footForce_sub[0] = rospy.Subscriber("/visual/FR_foot_contact/the_force", WrenchStamped,
                                                  self.FRfootCallback)
@@ -70,7 +70,7 @@ class a1_ros:
         
         self.servo_pub = [rospy.Publisher("/" + self.robot_name + controller_name +"/command", MotorCmd, queue_size=10) for controller_name in controller_names]
 
-        self.orientation_sub = rospy.Subscriber("/trunk_imu", Imu, self.a1_robot.imu_orientation)
+        # self.orientation_sub = rospy.Subscriber("/trunk_imu", Imu, self.a1_robot.imu_orientation)
 
         time.sleep(2)
 

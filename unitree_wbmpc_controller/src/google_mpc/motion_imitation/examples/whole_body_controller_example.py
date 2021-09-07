@@ -44,7 +44,7 @@ flags.DEFINE_bool("use_real_robot", True,
                   "whether to use real robot or simulation")
 flags.DEFINE_bool("show_gui", True, "whether to show GUI.")
 flags.DEFINE_float("max_time_secs", 10., "maximum time to run the robot.")
-flags.DEFINE_bool("pos_control", True, "use positional control?")
+flags.DEFINE_bool("pos_control", False, "use positional control?")
 FLAGS = flags.FLAGS
 
 _NUM_SIMULATION_ITERATION_STEPS = 300
@@ -90,15 +90,15 @@ _INIT_LEG_STATE = (
 
 def _generate_example_linear_angular_speed(t):
   """Creates an example speed profile based on time for demo purpose."""
-  vx = 0.6
+  vx = 0.3
   vy = 0.2
   wz = 0.8
   # vx = 0.0
   # vy = 0.0
   # wz = 0.0
 
-  time_points = (0, 2, 10, 15, 20, 25, 30)
-  speed_points = ((0, 0, 0, 0), (vx, 0, 0, 0), (vx, 0, 0, 0), (0, 0, 0, -wz),
+  time_points = (0, 5, 10, 15, 20, 25, 30)
+  speed_points = ((0, 0, 0, 0), (0, 0, 0, wz), (vx, 0, 0, 0), (0, 0, 0, -wz),
                   (0, -vy, 0, 0), (0, 0, 0, 0), (0, 0, 0, wz))
 
   speed = scipy.interpolate.interp1d(time_points,
@@ -230,16 +230,17 @@ def main(argv):
                             datetime.now().strftime('%Y_%m_%d_%H_%M_%S'))
       os.makedirs(logdir)
 
+
     start_time = robot.GetTimeSinceReset()
     current_time = start_time
-    com_vels, imu_rates, actions = [], [], []
+    timeline, com_vels, imu_rates, actions = [], [], [], []
     
     if FLAGS.use_real_robot == False and FLAGS.pos_control == True:
       raise ValueError("Can't use positional control in bullet")
 
     if FLAGS.use_real_robot:
       r = rospy.Rate(1000)
-      slowDownSim(0.00001)
+      slowDownSim()
   else:
     start_time = time.time()
     current_time = start_time
@@ -266,10 +267,16 @@ def main(argv):
     hybrid_action, _ = controller.get_action()
     com_vels.append(np.array(robot.GetBaseVelocity()).copy())
     imu_rates.append(np.array(robot.GetBaseRollPitchYawRate()).copy())
+    timeline.append(current_time)
     actions.append(hybrid_action)
     robot.Step(hybrid_action)
     current_time = robot.GetTimeSinceReset()
-    #print(current_time)
+    # print(current_time)
+
+    # Stop simulation if rollover
+    if abs(robot.GetBaseRollPitchYaw()[0]) > 0.5:
+      break
+
     if not FLAGS.use_real_robot:
       expected_duration = current_time - start_time_robot
       actual_duration = time.time() - start_time_wall
@@ -284,27 +291,39 @@ def main(argv):
   if FLAGS.use_gamepad:
     gamepad.stop()
   
-  # start servopy
-  print("running servo")
-  node_process = Popen(shlex.split('rosrun unitree_controller servopy.py'))
+  # Get robot to starting position after the end
+  if FLAGS.use_real_robot:
+    # start servopy
+    print("running servo")
+    node_process = Popen(shlex.split('rosrun unitree_controller servopy.py'))
 
+
+  ############# PLOTTING ##############################
   temp=np.zeros((len(actions),12))
   for i in range(len(actions)):
     temp[i][:] = actions[i][4:60:5]
-  plt.plot(temp)
+  
+  plt.figure()
+  plt.plot(timeline, temp)
   plt.legend(['FR_hip_torque','FR_upper_torque','FR_lower_torque',
               'FL_hip_torque','FL_upper_torque','FL_lower_torque',
               'RR_hip_torque','RR_upper_torque','RR_lower_torque',
               'RL_hip_torque','RL_upper_torque','RL_lower_torque'])
-  plt.show()
 
-  plt.plot(com_vels)
+  plt.figure()
+  plt.plot(timeline, com_vels)
   plt.legend(['Vx','Vy','Vz'])
+
+  plt.figure()
+  plt.plot(timeline, imu_rates)
+  plt.legend(['Wx','Wy','Wz'])
+
+  plt.figure()
+  plt.plot(timeline, controller._stance_leg_controller._desired_ddq_array)
+  plt.legend(['dd_x','dd_y','dd_z','dd_roll','dd_pitch','dd_yaw'])
   plt.show()
 
-  plt.plot(imu_rates)
-  plt.legend(['Wx','Wy','Wz'])
-  plt.show()
+  #######################################################
 
   if FLAGS.logdir:
     np.savez(os.path.join(logdir, 'action.npz'),
