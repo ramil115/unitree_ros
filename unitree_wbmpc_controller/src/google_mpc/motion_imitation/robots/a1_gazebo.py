@@ -1,3 +1,4 @@
+from re import L
 import rospy
 from unitree_legged_msgs.msg import LowState
 from unitree_legged_msgs.msg import LowCmd
@@ -5,11 +6,13 @@ from unitree_legged_msgs.msg import MotorState
 from unitree_legged_msgs.msg import MotorCmd
 from sensor_msgs.msg import Imu
 from geometry_msgs.msg import WrenchStamped
+from .PositionalControl.RobotController import RobotController
+from .PositionalControl.InverseKinematics import robot_IK
 import time
 
 
 class a1_ros:
-    def __init__(self, rname):
+    def __init__(self, rname, position_control=False):
         self.footForceThreshold = 0.01
         self.np = rospy.init_node('a1_ros', anonymous=True)
         self.robot_name = rname
@@ -18,6 +21,14 @@ class a1_ros:
         self.paramInit()
         self.imu_sub = rospy.Subscriber("/trunk_imu", Imu, self.imuCallback)
         self.footForce_sub = [None] * 4
+
+
+        body = [0.366, 0.094]
+        legs = [0.,0.08505, 0.2, 0.2] 
+
+        self.a1_robot = RobotController.Robot(body, legs, position_control)
+        self.inverseKinematics = robot_IK.InverseKinematics(body, legs)
+
         self.footForce_sub[0] = rospy.Subscriber("/visual/FR_foot_contact/the_force", WrenchStamped,
                                                  self.FRfootCallback)
         self.footForce_sub[1] = rospy.Subscriber("/visual/FL_foot_contact/the_force", WrenchStamped,
@@ -27,49 +38,40 @@ class a1_ros:
         self.footForce_sub[3] = rospy.Subscriber("/visual/RL_foot_contact/the_force", WrenchStamped,
                                                  self.RLfootCallback)
 
-        self.servo_sub = [None] * 12
-        self.servo_sub[0] = rospy.Subscriber("/" + self.robot_name + "_gazebo/FR_hip_controller/state",
-                                             MotorState, self.FRhipCallback)
-        self.servo_sub[1] = rospy.Subscriber("/" + self.robot_name + "_gazebo/FR_thigh_controller/state",
-                                             MotorState, self.FRthighCallback)
-        self.servo_sub[2] = rospy.Subscriber("/" + self.robot_name + "_gazebo/FR_calf_controller/state",
-                                             MotorState, self.FRcalfCallback)
-
-        self.servo_sub[3] = rospy.Subscriber("/" + self.robot_name + "_gazebo/FL_hip_controller/state",
-                                             MotorState, self.FLhipCallback)
-        self.servo_sub[4] = rospy.Subscriber("/" + self.robot_name + "_gazebo/FL_thigh_controller/state",
-                                             MotorState, self.FLthighCallback)
-        self.servo_sub[5] = rospy.Subscriber("/" + self.robot_name + "_gazebo/FL_calf_controller/state",
-                                             MotorState, self.FLcalfCallback)
-
-        self.servo_sub[6] = rospy.Subscriber("/" + self.robot_name + "_gazebo/RR_hip_controller/state",
-                                             MotorState, self.RRhipCallback)
-        self.servo_sub[7] = rospy.Subscriber("/" + self.robot_name + "_gazebo/RR_thigh_controller/state",
-                                             MotorState, self.RRthighCallback)
-        self.servo_sub[8] = rospy.Subscriber("/" + self.robot_name + "_gazebo/RR_calf_controller/state",
-                                             MotorState, self.RRcalfCallback)
-
-        self.servo_sub[9] = rospy.Subscriber("/" + self.robot_name + "_gazebo/RL_hip_controller/state",
-                                             MotorState, self.RLhipCallback)
-        self.servo_sub[10] = rospy.Subscriber("/" + self.robot_name + "_gazebo/RL_thigh_controller/state",
-                                              MotorState, self.RLthighCallback)
-        self.servo_sub[11] = rospy.Subscriber("/" + self.robot_name + "_gazebo/RL_calf_controller/state",
-                                              MotorState, self.RLcalfCallback)
+        controller_names =  ["_gazebo/FR_hip_controller",
+                        "_gazebo/FR_thigh_controller",
+                        "_gazebo/FR_calf_controller",
+                        "_gazebo/FL_hip_controller",
+                        "_gazebo/FL_thigh_controller",
+                        "_gazebo/FL_calf_controller",
+                        "_gazebo/RR_hip_controller",
+                        "_gazebo/RR_thigh_controller",
+                        "_gazebo/RR_calf_controller",
+                        "_gazebo/RL_hip_controller",
+                        "_gazebo/RL_thigh_controller",
+                        "_gazebo/RL_calf_controller"
+                        ]
         
-        self.servo_pub = [None] * 12
+        callbacks = [self.FRhipCallback,
+                    self.FRthighCallback,
+                    self.FRcalfCallback,
+                    self.FLhipCallback,
+                    self.FLthighCallback,
+                    self.FLcalfCallback,
+                    self.RRhipCallback,
+                    self.RRthighCallback,
+                    self.RRcalfCallback,
+                    self.RLhipCallback,
+                    self.RLthighCallback,
+                    self.RLcalfCallback]
 
-        self.servo_pub[0] = rospy.Publisher("/" + self.robot_name + "_gazebo/FR_hip_controller/command", MotorCmd, queue_size=10)
-        self.servo_pub[1] = rospy.Publisher("/" + self.robot_name + "_gazebo/FR_thigh_controller/command", MotorCmd, queue_size=10)
-        self.servo_pub[2] = rospy.Publisher("/" + self.robot_name + "_gazebo/FR_calf_controller/command", MotorCmd, queue_size=10)
-        self.servo_pub[3] = rospy.Publisher("/" + self.robot_name + "_gazebo/FL_hip_controller/command", MotorCmd, queue_size=10)
-        self.servo_pub[4] = rospy.Publisher("/" + self.robot_name + "_gazebo/FL_thigh_controller/command", MotorCmd, queue_size=10)
-        self.servo_pub[5] = rospy.Publisher("/" + self.robot_name + "_gazebo/FL_calf_controller/command", MotorCmd, queue_size=10)
-        self.servo_pub[6] = rospy.Publisher("/" + self.robot_name + "_gazebo/RR_hip_controller/command", MotorCmd, queue_size=10)
-        self.servo_pub[7] = rospy.Publisher("/" + self.robot_name + "_gazebo/RR_thigh_controller/command", MotorCmd, queue_size=10)
-        self.servo_pub[8] = rospy.Publisher("/" + self.robot_name + "_gazebo/RR_calf_controller/command", MotorCmd, queue_size=10)
-        self.servo_pub[9] = rospy.Publisher("/" + self.robot_name + "_gazebo/RL_hip_controller/command", MotorCmd, queue_size=10)
-        self.servo_pub[10] = rospy.Publisher("/" + self.robot_name + "_gazebo/RL_thigh_controller/command", MotorCmd, queue_size=10)
-        self.servo_pub[11] = rospy.Publisher("/" + self.robot_name + "_gazebo/RL_calf_controller/command", MotorCmd, queue_size=10)
+        self.servo_sub = [rospy.Subscriber("/" + self.robot_name + controller_name +"/state",
+                                             MotorState, callback) for controller_name,callback in zip(controller_names,callbacks)]
+        
+        self.servo_pub = [rospy.Publisher("/" + self.robot_name + controller_name +"/command", MotorCmd, queue_size=10) for controller_name in controller_names]
+
+        self.orientation_sub = rospy.Subscriber("/trunk_imu", Imu, self.a1_robot.imu_orientation)
+
         time.sleep(2)
 
     def imuCallback(self, msg):
@@ -232,3 +234,29 @@ class a1_ros:
             self.lowCmd.motorCmd[motor_id].tau=cmd[motor_id * 5+4]
         for m in range(12):
             self.servo_pub[m].publish(self.lowCmd.motorCmd[m])
+
+    def getPositionCommand(self):
+        leg_positions = self.a1_robot.run()
+        self.a1_robot.change_controller()
+
+        dx = self.a1_robot.state.body_local_position[0]
+        dy = self.a1_robot.state.body_local_position[1]
+        dz = self.a1_robot.state.body_local_position[2]
+        
+        roll = self.a1_robot.state.body_local_orientation[0]
+        pitch = self.a1_robot.state.body_local_orientation[1]
+        yaw = self.a1_robot.state.body_local_orientation[2]
+
+        try:
+            joint_angles = self.inverseKinematics.inverse_kinematics(leg_positions,
+                                dx, dy, dz, roll, pitch, yaw)
+            command = [0.0]*60
+            for i in range(12):
+                command[i*5] = joint_angles[i]
+                command[i*5+1] = 180
+                command[i*5+2] = 8
+            return command
+        except:
+            return [float("nan")]*12
+
+    

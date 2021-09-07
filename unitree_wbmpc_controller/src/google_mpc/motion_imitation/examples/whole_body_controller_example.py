@@ -44,6 +44,7 @@ flags.DEFINE_bool("use_real_robot", True,
                   "whether to use real robot or simulation")
 flags.DEFINE_bool("show_gui", True, "whether to show GUI.")
 flags.DEFINE_float("max_time_secs", 10., "maximum time to run the robot.")
+flags.DEFINE_bool("pos_control", True, "use positional control?")
 FLAGS = flags.FLAGS
 
 _NUM_SIMULATION_ITERATION_STEPS = 300
@@ -149,6 +150,7 @@ def _setup_controller(robot):
       swing_leg_controller=sw_controller,
       stance_leg_controller=st_controller,
       clock=robot.GetTimeSinceReset)
+
   return controller
 
 
@@ -194,13 +196,17 @@ def main(argv):
 
   # Construct robot class:
   if FLAGS.use_real_robot:
-    from motion_imitation.robots import a1_robot
-    robot = a1_robot.A1Robot(
-        pybullet_client=p,
-        motor_control_mode=robot_config.MotorControlMode.HYBRID,
-        enable_action_interpolation=False,
-        time_step=0.002,
-        action_repeat=1)
+    if FLAGS.pos_control:
+      from motion_imitation.robots import a1_gazebo
+      robot = a1_gazebo.a1_ros('a1',position_control=True)
+    else:
+      from motion_imitation.robots import a1_robot
+      robot = a1_robot.A1Robot(
+          pybullet_client=p,
+          motor_control_mode=robot_config.MotorControlMode.HYBRID,
+          enable_action_interpolation=False,
+          time_step=0.002,
+          action_repeat=1)
   else:
     robot = a1.A1(p,
                   motor_control_mode=robot_config.MotorControlMode.HYBRID,
@@ -209,39 +215,52 @@ def main(argv):
                   time_step=0.002,
                   action_repeat=1)
 
-  controller = _setup_controller(robot)
+  if not FLAGS.pos_control:
+    controller = _setup_controller(robot)
 
-  controller.reset()
-  if FLAGS.use_gamepad:
-    gamepad = gamepad_reader.Gamepad()
-    command_function = gamepad.get_command
+    controller.reset()
+    if FLAGS.use_gamepad:
+      gamepad = gamepad_reader.Gamepad()
+      command_function = gamepad.get_command
+    else:
+      command_function = _generate_example_linear_angular_speed
+
+    if FLAGS.logdir:
+      logdir = os.path.join(FLAGS.logdir,
+                            datetime.now().strftime('%Y_%m_%d_%H_%M_%S'))
+      os.makedirs(logdir)
+
+    start_time = robot.GetTimeSinceReset()
+    current_time = start_time
+    com_vels, imu_rates, actions = [], [], []
+    
+    if FLAGS.use_real_robot == False and FLAGS.pos_control == True:
+      raise ValueError("Can't use positional control in bullet")
+
+    if FLAGS.use_real_robot:
+      r = rospy.Rate(1000)
+      slowDownSim(0.00001)
   else:
-    command_function = _generate_example_linear_angular_speed
-
-  if FLAGS.logdir:
-    logdir = os.path.join(FLAGS.logdir,
-                          datetime.now().strftime('%Y_%m_%d_%H_%M_%S'))
-    os.makedirs(logdir)
-
-  start_time = robot.GetTimeSinceReset()
-  current_time = start_time
-  com_vels, imu_rates, actions = [], [], []
-  
-  if FLAGS.use_real_robot:
-    r = rospy.Rate(1000)
-    slowDownSim()
-
+    start_time = time.time()
+    current_time = start_time
 
   while not rospy.is_shutdown() and current_time - start_time < FLAGS.max_time_secs:
-    #time.sleep(0.0008) #on some fast computer, works better with sleep on real A1?
+    
+    if FLAGS.pos_control:
+      command = robot.getPositionCommand()
+      robot.send_command(command)
+      continue
+
+
     start_time_robot = current_time
     start_time_wall = time.time()
     # Updates the controller behavior parameters.
     lin_speed, ang_speed, e_stop = command_function(current_time)
-    # print(lin_speed)
     if e_stop:
       logging.info("E-stop kicked, exiting...")
       break
+
+
     _update_controller_params(controller, lin_speed, ang_speed)
     controller.update()
     hybrid_action, _ = controller.get_action()
@@ -250,7 +269,7 @@ def main(argv):
     actions.append(hybrid_action)
     robot.Step(hybrid_action)
     current_time = robot.GetTimeSinceReset()
-    print(current_time)
+    #print(current_time)
     if not FLAGS.use_real_robot:
       expected_duration = current_time - start_time_robot
       actual_duration = time.time() - start_time_wall
@@ -259,6 +278,9 @@ def main(argv):
     # print("actual_duration=", actual_duration)
     if FLAGS.use_real_robot:
       r.sleep()
+
+
+
   if FLAGS.use_gamepad:
     gamepad.stop()
   
