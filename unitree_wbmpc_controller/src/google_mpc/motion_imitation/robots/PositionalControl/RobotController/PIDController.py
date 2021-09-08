@@ -27,7 +27,7 @@ class PID_controller(object):
 
         # determine time step
         t_now = rospy.Time.now()
-        step = (t_now - self.last_time).to_sec()
+        step = (t_now - self.last_time).to_sec() + 0.0000001
 
         # I term update
         self.I_term = self.I_term + error * step

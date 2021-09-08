@@ -1,57 +1,34 @@
-from re import L
 import rospy
 from unitree_legged_msgs.msg import LowState
 from unitree_legged_msgs.msg import LowCmd
 from unitree_legged_msgs.msg import MotorState
 from unitree_legged_msgs.msg import MotorCmd
-from sensor_msgs.msg import Imu
+from sensor_msgs.msg import Imu,Joy
 from geometry_msgs.msg import WrenchStamped
-# from .PositionalControl.RobotController import RobotController
-# from .PositionalControl.InverseKinematics import robot_IK
+from std_msgs.msg import Float64
 import time
-
 
 class a1_ros:
     def __init__(self, rname, position_control=False):
-        self.footForceThreshold = 0.01
+
         self.np = rospy.init_node('a1_ros', anonymous=True)
         self.robot_name = rname
-        self.lowState = LowState()
-        self.lowCmd = LowCmd()
-        self.paramInit()
-        self.imu_sub = rospy.Subscriber("/trunk_imu", Imu, self.imuCallback)
-        self.footForce_sub = [None] * 4
-
-
-        body = [0.366, 0.094]
-        legs = [0.,0.08505, 0.2, 0.2] 
-
-        # self.a1_robot = RobotController.Robot(body, legs, position_control)
-        # self.inverseKinematics = robot_IK.InverseKinematics(body, legs)
-
-        self.footForce_sub[0] = rospy.Subscriber("/visual/FR_foot_contact/the_force", WrenchStamped,
-                                                 self.FRfootCallback)
-        self.footForce_sub[1] = rospy.Subscriber("/visual/FL_foot_contact/the_force", WrenchStamped,
-                                                 self.FLfootCallback)
-        self.footForce_sub[2] = rospy.Subscriber("/visual/RR_foot_contact/the_force", WrenchStamped,
-                                                 self.RRfootCallback)
-        self.footForce_sub[3] = rospy.Subscriber("/visual/RL_foot_contact/the_force", WrenchStamped,
-                                                 self.RLfootCallback)
+        self.pos_control = position_control
 
         controller_names =  ["_gazebo/FR_hip_controller",
-                        "_gazebo/FR_thigh_controller",
-                        "_gazebo/FR_calf_controller",
-                        "_gazebo/FL_hip_controller",
-                        "_gazebo/FL_thigh_controller",
-                        "_gazebo/FL_calf_controller",
-                        "_gazebo/RR_hip_controller",
-                        "_gazebo/RR_thigh_controller",
-                        "_gazebo/RR_calf_controller",
-                        "_gazebo/RL_hip_controller",
-                        "_gazebo/RL_thigh_controller",
-                        "_gazebo/RL_calf_controller"
-                        ]
-        
+                "_gazebo/FR_thigh_controller",
+                "_gazebo/FR_calf_controller",
+                "_gazebo/FL_hip_controller",
+                "_gazebo/FL_thigh_controller",
+                "_gazebo/FL_calf_controller",
+                "_gazebo/RR_hip_controller",
+                "_gazebo/RR_thigh_controller",
+                "_gazebo/RR_calf_controller",
+                "_gazebo/RL_hip_controller",
+                "_gazebo/RL_thigh_controller",
+                "_gazebo/RL_calf_controller"
+                ]
+
         callbacks = [self.FRhipCallback,
                     self.FRthighCallback,
                     self.FRcalfCallback,
@@ -65,12 +42,37 @@ class a1_ros:
                     self.RLthighCallback,
                     self.RLcalfCallback]
 
-        self.servo_sub = [rospy.Subscriber("/" + self.robot_name + controller_name +"/state",
-                                             MotorState, callback) for controller_name,callback in zip(controller_names,callbacks)]
-        
-        self.servo_pub = [rospy.Publisher("/" + self.robot_name + controller_name +"/command", MotorCmd, queue_size=10) for controller_name in controller_names]
+        self.footForceThreshold = 0.01
+        self.lowState = LowState()
+        self.lowCmd = LowCmd()
+        self.paramInit()
+        self.imu_sub = rospy.Subscriber("/trunk_imu", Imu, self.imuCallback)
+        self.footForce_sub = [None] * 4
 
-        # self.orientation_sub = rospy.Subscriber("/trunk_imu", Imu, self.a1_robot.imu_orientation)
+        self.footForce_sub[0] = rospy.Subscriber("/visual/FR_foot_contact/the_force", WrenchStamped,
+                                                self.FRfootCallback)
+        self.footForce_sub[1] = rospy.Subscriber("/visual/FL_foot_contact/the_force", WrenchStamped,
+                                                self.FLfootCallback)
+        self.footForce_sub[2] = rospy.Subscriber("/visual/RR_foot_contact/the_force", WrenchStamped,
+                                                self.RRfootCallback)
+        self.footForce_sub[3] = rospy.Subscriber("/visual/RL_foot_contact/the_force", WrenchStamped,
+                                                self.RLfootCallback)
+
+
+        self.servo_sub = [rospy.Subscriber("/" + self.robot_name + controller_name +"/state",
+                                            MotorState, callback) for controller_name,callback in zip(controller_names,callbacks)]
+        if position_control:
+            from .PositionalControl.RobotController import RobotController
+            from .PositionalControl.InverseKinematics import robot_IK
+            body = [0.366, 0.094]   
+            legs = [0.,0.08505, 0.2, 0.2] 
+
+            self.a1_robot = RobotController.Robot(body, legs, position_control)
+            self.inverseKinematics = robot_IK.InverseKinematics(body, legs)
+
+            self.orientation_sub = rospy.Subscriber("/trunk_imu", Imu, self.a1_robot.imu_orientation)
+
+        self.servo_pub = [rospy.Publisher("/" + self.robot_name + controller_name +"/command", MotorCmd, queue_size=10) for controller_name in controller_names]
 
         time.sleep(2)
 
@@ -224,8 +226,21 @@ class a1_ros:
         return self.lowState
 
     def send_command(self, command):
-        self.sendTorqueCmd(command)
-        
+        if self.pos_control:
+            self.sendJointCmd(command)
+        else:
+            self.sendTorqueCmd(command)
+    
+    def sendJointCmd(self,cmd):
+        for motor_id in range(12):
+            self.lowCmd.motorCmd[motor_id].q=cmd[motor_id]
+            self.lowCmd.motorCmd[motor_id].Kp=105
+            self.lowCmd.motorCmd[motor_id].Kd=4.5
+            self.lowCmd.motorCmd[motor_id].tau=0
+        for m in range(12):
+            self.servo_pub[m].publish(self.lowCmd.motorCmd[m])
+
+
     def sendTorqueCmd(self,cmd):
         for motor_id in range(12):
             self.lowCmd.motorCmd[motor_id].q=cmd[motor_id * 5]
@@ -234,6 +249,9 @@ class a1_ros:
             self.lowCmd.motorCmd[motor_id].tau=cmd[motor_id * 5+4]
         for m in range(12):
             self.servo_pub[m].publish(self.lowCmd.motorCmd[m])
+
+    def setMovement(self,type,inputVec=[0,0,1,0,0,1,0,0]):
+        self.a1_robot.set_movement(type,inputVec)
 
     def getPositionCommand(self):
         leg_positions = self.a1_robot.run()
@@ -250,12 +268,7 @@ class a1_ros:
         try:
             joint_angles = self.inverseKinematics.inverse_kinematics(leg_positions,
                                 dx, dy, dz, roll, pitch, yaw)
-            command = [0.0]*60
-            for i in range(12):
-                command[i*5] = joint_angles[i]
-                command[i*5+1] = 180
-                command[i*5+2] = 8
-            return command
+            return joint_angles
         except:
             return [float("nan")]*12
 

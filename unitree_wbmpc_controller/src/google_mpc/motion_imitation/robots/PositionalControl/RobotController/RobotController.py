@@ -2,14 +2,15 @@
 #Author: lnotspotl
 
 import numpy as np
-
-import tf
+import time
+from scipy.spatial.transform import Rotation as R
 from . StateCommand import State, Command, BehaviorState
 from . RestController import RestController
 from . TrotGaitController import TrotGaitController
 from . CrawlGaitController import CrawlGaitController
 from . StandController import StandController
-
+from sensor_msgs.msg import Joy
+        
 class Robot(object):
     def __init__(self, body, legs, imu):
         self.body = body
@@ -76,18 +77,21 @@ class Robot(object):
             self.command.rest_event = True
             
         elif msg.buttons[1]: # trot
+
             self.command.trot_event = True
             self.command.crawl_event = False
             self.command.stand_event = False
             self.command.rest_event = False
 
         elif msg.buttons[2]: # crawl
+
             self.command.trot_event = False
             self.command.crawl_event = True
             self.command.stand_event = False
             self.command.rest_event = False
        
         elif msg.buttons[3]: # stand
+
             self.command.trot_event = False
             self.command.crawl_event = False
             self.command.stand_event = True
@@ -95,9 +99,59 @@ class Robot(object):
       
         self.currentController.updateStateCommand(msg, self.state, self.command)
 
+    def set_movement(self,type,inputVec):
+        msg = Joy()
+        msg.axes = inputVec
+        msg.buttons = [0,0,0,0,0,0,0,0,0,0,0]
+
+        if type=="rest": 
+            '''
+            msg.axes[7]
+            msg.axes[6]
+            msg.axes[1]
+            msg.axes[0]
+            msg.axes[4]
+            msg.axes[3]
+
+            msg.buttons[7]
+            '''
+
+
+            msg.buttons[0] = True 
+        elif type=="trot":
+            '''
+            msg.axes[4]
+            msg.axes[3]
+            msg.axes[0]
+
+            msg.buttons[6]
+            msg.buttons[7]
+            '''
+            msg.buttons[1] = True 
+        elif type=="crawl": 
+            '''
+            msg.axes[4]
+            msg.axes[0]
+            '''
+            msg.buttons[2] = True 
+        elif type=="stand":
+            '''
+            msg.axes[7]
+            msg.axes[1]
+            msg.axes[0]
+            msg.axes[4]
+            msg.axes[3]
+
+            msg.buttons[7]
+            '''
+            msg.buttons[3] = True 
+
+        self.joystick_command(msg)
+        
     def imu_orientation(self,msg):
         q = msg.orientation
-        rpy_angles = tf.transformations.euler_from_quaternion([q.x,q.y,q.z,q.w])
+        r = R.from_quat([q.x,q.y,q.z,q.w])
+        rpy_angles = r.as_euler("xyz")
         self.state.imu_roll = rpy_angles[0]
         self.state.imu_pitch = rpy_angles[1]
 

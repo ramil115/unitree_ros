@@ -214,16 +214,17 @@ def main(argv):
                   reset_time=2,
                   time_step=0.002,
                   action_repeat=1)
+  if FLAGS.use_gamepad:
+      gamepad = gamepad_reader.Gamepad()
+      command_function = gamepad.get_command
+  else:
+      command_function = _generate_example_linear_angular_speed
 
   if not FLAGS.pos_control:
     controller = _setup_controller(robot)
 
     controller.reset()
-    if FLAGS.use_gamepad:
-      gamepad = gamepad_reader.Gamepad()
-      command_function = gamepad.get_command
-    else:
-      command_function = _generate_example_linear_angular_speed
+
 
     if FLAGS.logdir:
       logdir = os.path.join(FLAGS.logdir,
@@ -242,12 +243,17 @@ def main(argv):
       r = rospy.Rate(1000)
       slowDownSim()
   else:
+    inputVec = [0.1,0,1,-0.1,0,1,0,0]
+    behaviours = ["rest","trot","crawl","stand"]
+    TYPE = 1
+    robot.setMovement(behaviours[TYPE],inputVec)
     start_time = time.time()
     current_time = start_time
 
   while not rospy.is_shutdown() and current_time - start_time < FLAGS.max_time_secs:
     
     if FLAGS.pos_control:
+      robot.setMovement(behaviours[TYPE],inputVec)
       command = robot.getPositionCommand()
       robot.send_command(command)
       continue
