@@ -201,7 +201,7 @@ def main(argv):
   if FLAGS.use_real_robot:
     if FLAGS.pos_control:
       from motion_imitation.robots import a1_gazebo
-      UPDATE_RATE = 50
+      UPDATE_RATE = 100
       robot = a1_gazebo.a1_ros('a1',position_control=True,update_rate=UPDATE_RATE)
     else:
       from motion_imitation.robots import a1_robot
@@ -247,6 +247,8 @@ def main(argv):
       r = rospy.Rate(800)
       slowDownSim()
   else:
+    start_time = time.time()
+    current_time = time.time()
     inputVec = [0,0,1,0,0.2,1,0,0]
     buttons = [0]*8
     buttons[7]=1
@@ -266,6 +268,7 @@ def main(argv):
       robot.send_command(command)
       print(robot.a1_robot.state.ticks)
       r.sleep()
+      current_time = time.time()
       continue
 
     start_time_robot = current_time
