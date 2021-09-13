@@ -43,7 +43,7 @@ flags.DEFINE_bool("use_gamepad", False,
 flags.DEFINE_bool("use_real_robot", True,
                   "whether to use real robot or simulation")
 flags.DEFINE_bool("show_gui", True, "whether to show GUI.")
-flags.DEFINE_float("max_time_secs", 10., "maximum time to run the robot.")
+flags.DEFINE_float("max_time_secs", 20., "maximum time to run the robot.")
 flags.DEFINE_bool("pos_control", False, "use positional control?")
 FLAGS = flags.FLAGS
 
@@ -90,20 +90,23 @@ _INIT_LEG_STATE = (
 
 def _generate_example_linear_angular_speed(t):
   """Creates an example speed profile based on time for demo purpose."""
-  vx = 0.3
+  vx = 0.8
   vy = 0.2
   wz = 0.8
   # vx = 0.0
   # vy = 0.0
   # wz = 0.0
 
-  time_points = (0, 5, 10, 15, 20, 25, 30)
-  speed_points = ((0, 0, 0, 0), (0, 0, 0, wz), (vx, 0, 0, 0), (0, 0, 0, -wz),
-                  (0, -vy, 0, 0), (0, 0, 0, 0), (0, 0, 0, wz))
+  # time_points = (0, 5, 10, 15, 20, 25, 30)
+  # speed_points = ((0, 0, 0, 0), (vx, 0, 0, 0), (vx, 0, 0, 0), (0, 0, 0, -wz),
+  #                 (0, -vy, 0, 0), (0, 0, 0, 0), (0, 0, 0, wz))
+
+  time_points = (0, 20)
+  speed_points = ((0, 0, 0, 0), (vx, 0, 0, 0))
 
   speed = scipy.interpolate.interp1d(time_points,
                                      speed_points,
-                                     kind="previous",
+                                     kind="linear", # pay attention to kind (default "linear")
                                      fill_value="extrapolate",
                                      axis=0)(t)
 
