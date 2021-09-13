@@ -243,12 +243,16 @@ def main(argv):
       r = rospy.Rate(1000)
       slowDownSim()
   else:
-    inputVec = [0.1,0,1,-0.1,0,1,0,0]
+    inputVec = [0,0,1,0,0.2,1,0,0]
+    buttons = [0]*8
+    buttons[7]=1
     behaviours = ["rest","trot","crawl","stand"]
     TYPE = 1
-    robot.setMovement(behaviours[TYPE],inputVec)
+    robot.setMovement(behaviours[TYPE],inputVec,buttons)
     start_time = time.time()
     current_time = start_time
+    r = rospy.Rate(60)
+    slowDownSim(0.0005)
 
   while not rospy.is_shutdown() and current_time - start_time < FLAGS.max_time_secs:
     

@@ -7,6 +7,7 @@ from sensor_msgs.msg import Imu,Joy
 from geometry_msgs.msg import WrenchStamped
 from std_msgs.msg import Float64
 import time
+import numpy as np
 
 class a1_ros:
     def __init__(self, rname, position_control=False):
@@ -14,6 +15,9 @@ class a1_ros:
         self.np = rospy.init_node('a1_ros', anonymous=True)
         self.robot_name = rname
         self.pos_control = position_control
+
+        self.kps = np.array([100]*12)
+        self.kds = np.array([1., 2., 2., 1., 2., 2., 1., 2., 2., 1., 2., 2.])
 
         controller_names =  ["_gazebo/FR_hip_controller",
                 "_gazebo/FR_thigh_controller",
@@ -67,7 +71,7 @@ class a1_ros:
             body = [0.366, 0.094]   
             legs = [0.,0.08505, 0.2, 0.2] 
 
-            self.a1_robot = RobotController.Robot(body, legs, position_control)
+            self.a1_robot = RobotController.Robot(body, legs, True)
             self.inverseKinematics = robot_IK.InverseKinematics(body, legs)
 
             self.orientation_sub = rospy.Subscriber("/trunk_imu", Imu, self.a1_robot.imu_orientation)
@@ -234,8 +238,8 @@ class a1_ros:
     def sendJointCmd(self,cmd):
         for motor_id in range(12):
             self.lowCmd.motorCmd[motor_id].q=cmd[motor_id]
-            self.lowCmd.motorCmd[motor_id].Kp=105
-            self.lowCmd.motorCmd[motor_id].Kd=4.5
+            self.lowCmd.motorCmd[motor_id].Kp=self.kps[motor_id]
+            self.lowCmd.motorCmd[motor_id].Kd=self.kds[motor_id]
             self.lowCmd.motorCmd[motor_id].tau=0
         for m in range(12):
             self.servo_pub[m].publish(self.lowCmd.motorCmd[m])
@@ -250,8 +254,8 @@ class a1_ros:
         for m in range(12):
             self.servo_pub[m].publish(self.lowCmd.motorCmd[m])
 
-    def setMovement(self,type,inputVec=[0,0,1,0,0,1,0,0]):
-        self.a1_robot.set_movement(type,inputVec)
+    def setMovement(self,type,inputVec=[0,0,1,0,0,1,0,0],buttons=[0,0,0,0,0,0,0,0]):
+        self.a1_robot.set_movement(type,inputVec,buttons)
 
     def getPositionCommand(self):
         leg_positions = self.a1_robot.run()

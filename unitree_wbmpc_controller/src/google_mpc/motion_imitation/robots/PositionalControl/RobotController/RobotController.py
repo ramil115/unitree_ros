@@ -99,10 +99,10 @@ class Robot(object):
       
         self.currentController.updateStateCommand(msg, self.state, self.command)
 
-    def set_movement(self,type,inputVec):
+    def set_movement(self,type,inputVec,buttons):
         msg = Joy()
         msg.axes = inputVec
-        msg.buttons = [0,0,0,0,0,0,0,0,0,0,0]
+        msg.buttons = buttons
 
         if type=="rest": 
             '''
@@ -152,6 +152,7 @@ class Robot(object):
         q = msg.orientation
         r = R.from_quat([q.x,q.y,q.z,q.w])
         rpy_angles = r.as_euler("xyz")
+
         self.state.imu_roll = rpy_angles[0]
         self.state.imu_pitch = rpy_angles[1]
 
