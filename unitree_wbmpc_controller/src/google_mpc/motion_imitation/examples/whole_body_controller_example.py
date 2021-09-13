@@ -201,7 +201,8 @@ def main(argv):
   if FLAGS.use_real_robot:
     if FLAGS.pos_control:
       from motion_imitation.robots import a1_gazebo
-      robot = a1_gazebo.a1_ros('a1',position_control=True)
+      UPDATE_RATE = 50
+      robot = a1_gazebo.a1_ros('a1',position_control=True,update_rate=UPDATE_RATE)
     else:
       from motion_imitation.robots import a1_robot
       robot = a1_robot.A1Robot(
@@ -243,7 +244,7 @@ def main(argv):
       raise ValueError("Can't use positional control in bullet")
 
     if FLAGS.use_real_robot:
-      r = rospy.Rate(1000)
+      r = rospy.Rate(800)
       slowDownSim()
   else:
     inputVec = [0,0,1,0,0.2,1,0,0]
@@ -254,8 +255,8 @@ def main(argv):
     robot.setMovement(behaviours[TYPE],inputVec,buttons)
     start_time = time.time()
     current_time = start_time
-    r = rospy.Rate(60)
-    slowDownSim(0.0005)
+    r = rospy.Rate(UPDATE_RATE)
+
 
   while not rospy.is_shutdown() and current_time - start_time < FLAGS.max_time_secs:
     
@@ -263,8 +264,9 @@ def main(argv):
       robot.setMovement(behaviours[TYPE],inputVec)
       command = robot.getPositionCommand()
       robot.send_command(command)
+      print(robot.a1_robot.state.ticks)
+      r.sleep()
       continue
-
 
     start_time_robot = current_time
     start_time_wall = time.time()

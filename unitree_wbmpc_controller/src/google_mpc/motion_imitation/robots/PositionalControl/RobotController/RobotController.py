@@ -12,7 +12,7 @@ from . StandController import StandController
 from sensor_msgs.msg import Joy
         
 class Robot(object):
-    def __init__(self, body, legs, imu):
+    def __init__(self, body, legs, imu, time_step):
         self.body = body
         self.legs = legs
 
@@ -23,7 +23,7 @@ class Robot(object):
         self.default_height = 0.25
 
         self.trotGaitController = TrotGaitController(self.default_stance,
-            stance_time = 0.04, swing_time = 0.18, time_step = 0.02,
+            stance_time = 0.3, swing_time = 0.2, time_step = time_step,
             use_imu = imu)
 
         self.crawlGaitController = CrawlGaitController(self.default_stance,

@@ -10,7 +10,7 @@ import time
 import numpy as np
 
 class a1_ros:
-    def __init__(self, rname, position_control=False):
+    def __init__(self, rname, position_control=False, update_rate=1000):
 
         self.np = rospy.init_node('a1_ros', anonymous=True)
         self.robot_name = rname
@@ -71,7 +71,7 @@ class a1_ros:
             body = [0.366, 0.094]   
             legs = [0.,0.08505, 0.2, 0.2] 
 
-            self.a1_robot = RobotController.Robot(body, legs, True)
+            self.a1_robot = RobotController.Robot(body, legs, True, 1/update_rate)
             self.inverseKinematics = robot_IK.InverseKinematics(body, legs)
 
             self.orientation_sub = rospy.Subscriber("/trunk_imu", Imu, self.a1_robot.imu_orientation)
