@@ -1,3 +1,4 @@
+import re
 import rospy
 from unitree_legged_msgs.msg import LowState
 from unitree_legged_msgs.msg import LowCmd
@@ -75,10 +76,10 @@ class a1_ros:
             self.inverseKinematics = robot_IK.InverseKinematics(body, legs)
 
             self.orientation_sub = rospy.Subscriber("/trunk_imu", Imu, self.a1_robot.imu_orientation)
-
         self.servo_pub = [rospy.Publisher("/" + self.robot_name + controller_name +"/command", MotorCmd, queue_size=10) for controller_name in controller_names]
-
+        self.actions = []
         time.sleep(2)
+        self.resetTime = rospy.get_time()
 
     def imuCallback(self, msg):
         # print("IMU Callback run")
@@ -254,13 +255,14 @@ class a1_ros:
         for m in range(12):
             self.servo_pub[m].publish(self.lowCmd.motorCmd[m])
 
-    def setMovement(self,type,inputVec=[0,0,1,0,0,1,0,0],buttons=[0,0,0,0,0,0,0,0]):
+    def setMovement(self,type,inputVec=[0,0,1,0,0,1,0,0],buttons=[False]*8):
         self.a1_robot.set_movement(type,inputVec,buttons)
-
-    def getPositionCommand(self):
-        leg_positions = self.a1_robot.run()
+    
+    def stepPosControl(self):
+        self.leg_positions = self.a1_robot.run()
         self.a1_robot.change_controller()
 
+    def getPositionCommand(self):
         dx = self.a1_robot.state.body_local_position[0]
         dy = self.a1_robot.state.body_local_position[1]
         dz = self.a1_robot.state.body_local_position[2]
@@ -270,10 +272,27 @@ class a1_ros:
         yaw = self.a1_robot.state.body_local_orientation[2]
 
         try:
-            joint_angles = self.inverseKinematics.inverse_kinematics(leg_positions,
+            joint_angles = self.inverseKinematics.inverse_kinematics(self.leg_positions,
                                 dx, dy, dz, roll, pitch, yaw)
             return joint_angles
         except:
-            return [float("nan")]*12
+            print("POSITION FAIL")
+            return None
+
+    def getTimeSinceReset(self):
+        return rospy.get_time() - self.resetTime
+
+    def sendControllerCommand(self,inputCommand):
+        inputVec,buttons = inputCommand.transformToPosControl()
+        self.setMovement("trot",inputVec,buttons)
+        self.stepPosControl()
+        command = self.getPositionCommand()
+
+        if command != None:
+            self.send_command(command)
+            self.actions.append(command)
+            return True
+        else:
+            return False
 
     

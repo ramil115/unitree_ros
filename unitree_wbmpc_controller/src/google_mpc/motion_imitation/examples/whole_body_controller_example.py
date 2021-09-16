@@ -156,18 +156,30 @@ def _setup_controller(robot):
 
   return controller
 
-
-def _update_controller_params(controller, lin_speed, ang_speed):
-  controller.swing_leg_controller.desired_speed = lin_speed
-  controller.swing_leg_controller.desired_twisting_speed = ang_speed
-  controller.stance_leg_controller.desired_speed = lin_speed
-  controller.stance_leg_controller.desired_twisting_speed = ang_speed
-
 from gazebo_msgs.msg import  ODEPhysics
 from gazebo_msgs.srv import SetPhysicsProperties, GetPhysicsProperties
 from geometry_msgs.msg import Vector3
 import rospy
 from std_msgs.msg import Float64
+
+class InputCommand:
+  def __init__(self, linearSpeed,angularSpeed):
+      self.linearSpeed = linearSpeed
+      self.angularSpeed = angularSpeed
+      self.useIMU = True
+  
+  def transformToPosControl(self):
+    inputVec = [0,0,1,0,0,1,0,0]
+    buttons = [False]*8
+
+    inputVec[4] = self.linearSpeed[0]
+    inputVec[3] = self.linearSpeed[1]
+    inputVec[0] = self.angularSpeed
+
+    if self.useIMU == True:
+      buttons[7]=True
+
+    return inputVec,buttons
 
 def slowDownSim(rate=0.00025):
   set_physics = rospy.ServiceProxy('/gazebo/set_physics_properties', SetPhysicsProperties)
@@ -229,7 +241,7 @@ def main(argv):
 
     controller.reset()
 
-
+    robot.controller = controller
     if FLAGS.logdir:
       logdir = os.path.join(FLAGS.logdir,
                             datetime.now().strftime('%Y_%m_%d_%H_%M_%S'))
@@ -238,8 +250,7 @@ def main(argv):
 
     start_time = robot.GetTimeSinceReset()
     current_time = start_time
-    timeline, com_vels, imu_rates, actions = [], [], [], []
-    
+    timeline, com_vels, imu_rates = [], [], []
     if FLAGS.use_real_robot == False and FLAGS.pos_control == True:
       raise ValueError("Can't use positional control in bullet")
 
@@ -247,62 +258,59 @@ def main(argv):
       r = rospy.Rate(800)
       slowDownSim()
   else:
-    start_time = time.time()
-    current_time = time.time()
-    inputVec = [0,0,1,0,0.2,1,0,0]
-    buttons = [0]*8
-    buttons[7]=1
-    behaviours = ["rest","trot","crawl","stand"]
-    TYPE = 1
-    robot.setMovement(behaviours[TYPE],inputVec,buttons)
-    start_time = time.time()
+    start_time = robot.getTimeSinceReset()
+    current_time = start_time
+    inputCommand = InputCommand([0,0],0)
+    robot.sendControllerCommand(inputCommand)
     current_time = start_time
     r = rospy.Rate(UPDATE_RATE)
+    slowDownSim(0.0001)
+
 
 
   while not rospy.is_shutdown() and current_time - start_time < FLAGS.max_time_secs:
     
     if FLAGS.pos_control:
-      robot.setMovement(behaviours[TYPE],inputVec)
-      command = robot.getPositionCommand()
-      robot.send_command(command)
-      print(robot.a1_robot.state.ticks)
+
+      lin_speed, ang_speed, e_stop = command_function(current_time)
+      inputCommand = InputCommand(lin_speed,ang_speed)
+      print(lin_speed)
+      print(ang_speed)
+      if not robot.sendControllerCommand(inputCommand):
+        break
       r.sleep()
-      current_time = time.time()
-      continue
+      current_time = robot.getTimeSinceReset()
 
-    start_time_robot = current_time
-    start_time_wall = time.time()
-    # Updates the controller behavior parameters.
-    lin_speed, ang_speed, e_stop = command_function(current_time)
-    if e_stop:
-      logging.info("E-stop kicked, exiting...")
-      break
+    else:
+      start_time_robot = current_time
+      start_time_wall = time.time()
+      # Updates the controller behavior parameters.
+      lin_speed, ang_speed, e_stop = command_function(current_time)
+      if e_stop:
+        logging.info("E-stop kicked, exiting...")
+        break
+      
+      inputCommand = InputCommand(lin_speed,ang_speed)
+      robot.sendControllerCommand(inputCommand)
+      
+      timeline.append(current_time)
+      com_vels.append(np.array(robot.GetBaseVelocity()).copy())
+      imu_rates.append(np.array(robot.GetBaseRollPitchYawRate()).copy())
+      current_time = robot.GetTimeSinceReset()
 
+      rollPitch = robot.GetBaseRollPitchYaw()
+      # Stop simulation if rollover
+      if  abs(rollPitch[0])> 0.5 or abs(rollPitch[1])> 0.5:
+        break
 
-    _update_controller_params(controller, lin_speed, ang_speed)
-    controller.update()
-    hybrid_action, _ = controller.get_action()
-    com_vels.append(np.array(robot.GetBaseVelocity()).copy())
-    imu_rates.append(np.array(robot.GetBaseRollPitchYawRate()).copy())
-    timeline.append(current_time)
-    actions.append(hybrid_action)
-    robot.Step(hybrid_action)
-    current_time = robot.GetTimeSinceReset()
-    # print(current_time)
-
-    # Stop simulation if rollover
-    if abs(robot.GetBaseRollPitchYaw()[0]) > 0.5:
-      break
-
-    if not FLAGS.use_real_robot:
-      expected_duration = current_time - start_time_robot
-      actual_duration = time.time() - start_time_wall
-      if actual_duration < expected_duration:
-        time.sleep(expected_duration - actual_duration)
-    # print("actual_duration=", actual_duration)
-    if FLAGS.use_real_robot:
-      r.sleep()
+      if not FLAGS.use_real_robot:
+        expected_duration = current_time - start_time_robot
+        actual_duration = time.time() - start_time_wall
+        if actual_duration < expected_duration:
+          time.sleep(expected_duration - actual_duration)
+      # print("actual_duration=", actual_duration)
+      if FLAGS.use_real_robot:
+        r.sleep()
 
 
 
@@ -315,12 +323,11 @@ def main(argv):
     print("running servo")
     node_process = Popen(shlex.split('rosrun unitree_controller servopy.py'))
 
-
   ############# PLOTTING ##############################
-  temp=np.zeros((len(actions),12))
-  for i in range(len(actions)):
-    temp[i][:] = actions[i][4:60:5]
-  
+  temp=np.zeros((len(robot.actions),12))
+  for i in range(len(robot.actions)):
+    temp[i][:] = robot.actions[i][4:60:5]
+
   plt.figure()
   plt.plot(timeline, temp)
   plt.legend(['FR_hip_torque','FR_upper_torque','FR_lower_torque',
@@ -345,7 +352,7 @@ def main(argv):
 
   if FLAGS.logdir:
     np.savez(os.path.join(logdir, 'action.npz'),
-             action=actions,
+             action=robot.actions,
              com_vels=com_vels,
              imu_rates=imu_rates)
     logging.info("logged to: {}".format(logdir))

@@ -230,7 +230,8 @@ class Minitaur(object):
 
     if self._enable_action_filter:
       self._action_filter = self._BuildActionFilter()
-
+    self.actions = []
+    self.controller = None
     # reset_time=-1.0 means skipping the reset motion.
     # See Reset for more details.
     self.Reset(reset_time=reset_time)
@@ -245,6 +246,16 @@ class Minitaur(object):
     self.ReceiveObservation()
     self._state_action_counter += 1
 
+  def sendControllerCommand(self, inputCommand):
+    self.controller.swing_leg_controller.desired_speed = inputCommand.linearSpeed
+    self.controller.swing_leg_controller.desired_twisting_speed = inputCommand.angularSpeed
+    self.controller.stance_leg_controller.desired_speed = inputCommand.linearSpeed
+    self.controller.stance_leg_controller.desired_twisting_speed = inputCommand.angularSpeed
+    self.controller.update()
+    hybrid_action, _ = self.controller.get_action()
+    self.actions.append(hybrid_action)
+    self.Step(hybrid_action)
+    
   def Step(self, action, control_mode=None):
     """Steps simulation."""
     if self._enable_action_filter:

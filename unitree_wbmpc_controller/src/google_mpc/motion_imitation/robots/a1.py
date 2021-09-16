@@ -272,6 +272,7 @@ class A1(minitaur.Minitaur):
         enable_action_interpolation=enable_action_interpolation,
         enable_action_filter=enable_action_filter,
         reset_time=reset_time)
+    
 
   def _LoadRobotURDF(self):
     a1_urdf_path = self.GetURDFFile()

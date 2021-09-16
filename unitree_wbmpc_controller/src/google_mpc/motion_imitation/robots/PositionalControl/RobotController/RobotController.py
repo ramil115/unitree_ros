@@ -101,8 +101,8 @@ class Robot(object):
 
     def set_movement(self,type,inputVec,buttons):
         msg = Joy()
-        msg.axes = inputVec
-        msg.buttons = buttons
+        msg.axes = inputVec.copy()
+        msg.buttons = buttons.copy()
 
         if type=="rest": 
             '''
