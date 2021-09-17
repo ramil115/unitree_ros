@@ -261,6 +261,7 @@ def main(argv):
     start_time = robot.getTimeSinceReset()
     current_time = start_time
     inputCommand = InputCommand([0,0],0)
+    inputCommand.useIMU = True
     robot.sendControllerCommand(inputCommand)
     current_time = start_time
     r = rospy.Rate(UPDATE_RATE)
