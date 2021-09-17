@@ -96,7 +96,9 @@ class TrotGaitController(GaitController):
                 compensation = self.pid_controller.run(state.imu_roll, state.imu_pitch)
                 roll_compensation = -compensation[0]
                 pitch_compensation = -compensation[1]
-
+                print(roll_compensation)
+                print(pitch_compensation)
+                print()
                 rot = rotxyz(roll_compensation,pitch_compensation,0)
                 new_foot_locations = np.matmul(rot,new_foot_locations)
             state.ticks += 1

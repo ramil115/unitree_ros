@@ -43,7 +43,7 @@ flags.DEFINE_bool("use_gamepad", False,
 flags.DEFINE_bool("use_real_robot", True,
                   "whether to use real robot or simulation")
 flags.DEFINE_bool("show_gui", True, "whether to show GUI.")
-flags.DEFINE_float("max_time_secs", 20., "maximum time to run the robot.")
+flags.DEFINE_float("max_time_secs", 100., "maximum time to run the robot.")
 flags.DEFINE_bool("pos_control", False, "use positional control?")
 FLAGS = flags.FLAGS
 
@@ -213,7 +213,7 @@ def main(argv):
   if FLAGS.use_real_robot:
     if FLAGS.pos_control:
       from motion_imitation.robots import a1_gazebo
-      UPDATE_RATE = 100
+      UPDATE_RATE = 50
       robot = a1_gazebo.a1_ros('a1',position_control=True,update_rate=UPDATE_RATE)
     else:
       from motion_imitation.robots import a1_robot
@@ -263,9 +263,10 @@ def main(argv):
     inputCommand = InputCommand([0,0],0)
     inputCommand.useIMU = True
     robot.sendControllerCommand(inputCommand)
+
     current_time = start_time
     r = rospy.Rate(UPDATE_RATE)
-    slowDownSim(0.0001)
+    #slowDownSim(0.0001)
 
 
 
@@ -275,8 +276,7 @@ def main(argv):
 
       lin_speed, ang_speed, e_stop = command_function(current_time)
       inputCommand = InputCommand(lin_speed,ang_speed)
-      print(lin_speed)
-      print(ang_speed)
+      inputCommand.useIMU = True
       if not robot.sendControllerCommand(inputCommand):
         break
       r.sleep()

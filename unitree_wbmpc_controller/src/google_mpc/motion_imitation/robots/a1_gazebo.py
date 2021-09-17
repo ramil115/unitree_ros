@@ -257,10 +257,7 @@ class a1_ros:
 
     def setMovement(self,type,inputVec=[0,0,1,0,0,1,0,0],buttons=[False]*8):
         self.a1_robot.set_movement(type,inputVec,buttons)
-    
-    def stepPosControl(self):
-        self.leg_positions = self.a1_robot.run()
-        self.a1_robot.change_controller()
+
 
     def getPositionCommand(self):
         dx = self.a1_robot.state.body_local_position[0]
@@ -271,21 +268,25 @@ class a1_ros:
         pitch = self.a1_robot.state.body_local_orientation[1]
         yaw = self.a1_robot.state.body_local_orientation[2]
 
-        try:
-            joint_angles = self.inverseKinematics.inverse_kinematics(self.leg_positions,
-                                dx, dy, dz, roll, pitch, yaw)
-            return joint_angles
-        except:
-            print("POSITION FAIL")
-            return None
+        #try:
+        joint_angles = self.inverseKinematics.inverse_kinematics(self.leg_positions,
+                            dx, dy, dz, roll, pitch, yaw)
+        return joint_angles
+        #except:
+        #    print("POSITION FAIL")
+        #    return None
 
     def getTimeSinceReset(self):
         return rospy.get_time() - self.resetTime
 
     def sendControllerCommand(self,inputCommand):
         inputVec,buttons = inputCommand.transformToPosControl()
+        if self.a1_robot.trotGaitController.use_imu == True and inputCommand.useIMU==True:
+            buttons[7]=False
+
         self.setMovement("trot",inputVec,buttons)
-        self.stepPosControl()
+        self.leg_positions = self.a1_robot.run()
+        self.a1_robot.change_controller()
         command = self.getPositionCommand()
 
         if command != None:
