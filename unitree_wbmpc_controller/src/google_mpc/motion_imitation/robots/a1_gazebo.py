@@ -268,13 +268,13 @@ class a1_ros:
         pitch = self.a1_robot.state.body_local_orientation[1]
         yaw = self.a1_robot.state.body_local_orientation[2]
 
-        #try:
-        joint_angles = self.inverseKinematics.inverse_kinematics(self.leg_positions,
-                            dx, dy, dz, roll, pitch, yaw)
-        return joint_angles
-        #except:
-        #    print("POSITION FAIL")
-        #    return None
+        try:
+            joint_angles = self.inverseKinematics.inverse_kinematics(self.leg_positions,
+                                dx, dy, dz, roll, pitch, yaw)
+            return joint_angles
+        except:
+            print("POSITION FAIL")
+            return None
 
     def getTimeSinceReset(self):
         return rospy.get_time() - self.resetTime
@@ -283,6 +283,8 @@ class a1_ros:
         inputVec,buttons = inputCommand.transformToPosControl()
         if self.a1_robot.trotGaitController.use_imu == True and inputCommand.useIMU==True:
             buttons[7]=False
+        if self.a1_robot.trotGaitController.use_imu == True and inputCommand.useIMU==False:
+            buttons[7]=True
 
         self.setMovement("trot",inputVec,buttons)
         self.leg_positions = self.a1_robot.run()
