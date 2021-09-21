@@ -1,6 +1,8 @@
 """Example of whole body controller on A1 robot."""
 import os
 import inspect
+
+from numpy.core.numeric import roll
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(os.path.dirname(currentdir))
 os.sys.path.insert(0, parentdir)
@@ -40,6 +42,8 @@ from motion_imitation.robots.gamepad import gamepad_reader
 flags.DEFINE_string("logdir", None, "where to log trajectories.")
 flags.DEFINE_bool("use_gamepad", False,
                   "whether to use gamepad to provide control input.")
+flags.DEFINE_bool("use_gazebo", False,
+                  "whether to use real robot or simulation")
 flags.DEFINE_bool("use_real_robot", True,
                   "whether to use real robot or simulation")
 flags.DEFINE_bool("show_gui", True, "whether to show GUI.")
@@ -209,33 +213,48 @@ def main(argv):
   p.setAdditionalSearchPath(pybullet_data.getDataPath())
   p.loadURDF("plane.urdf")
 
+
+  
+  UPDATE_RATE = 100
+  
   # Construct robot class:
-  if FLAGS.use_real_robot:
+  if FLAGS.use_gazebo:
+    from motion_imitation.robots.A1RobotGazebo import A1RobotGazebo
     if FLAGS.pos_control:
-      from motion_imitation.robots import a1_gazebo
-      UPDATE_RATE = 100
-      robot = a1_gazebo.a1_ros('a1',position_control=True,update_rate=UPDATE_RATE)
+      robot = A1RobotGazebo(
+          pybullet_client=p,
+          motor_control_mode=robot_config.MotorControlMode.HYBRID,
+          enable_action_interpolation=False,
+          time_step=0.002,
+          action_repeat=1,
+          position_control=True,
+          update_rate=UPDATE_RATE)
     else:
-      from motion_imitation.robots import a1_robot
-      robot = a1_robot.A1Robot(
+      robot = A1RobotGazebo(
           pybullet_client=p,
           motor_control_mode=robot_config.MotorControlMode.HYBRID,
           enable_action_interpolation=False,
           time_step=0.002,
           action_repeat=1)
-  else:
-    robot = a1.A1(p,
+  else: #pybullet
+    if FLAGS.pos_control:
+      raise Exception("Position control not implemented for pybullet")
+    else:
+          robot = a1.A1(p,
                   motor_control_mode=robot_config.MotorControlMode.HYBRID,
                   enable_action_interpolation=False,
                   reset_time=2,
                   time_step=0.002,
                   action_repeat=1)
+
+
   if FLAGS.use_gamepad:
       gamepad = gamepad_reader.Gamepad()
       command_function = gamepad.get_command
   else:
       command_function = _generate_example_linear_angular_speed
 
+  timeline, com_vels, imu_rates = [], [], []
   if not FLAGS.pos_control:
     controller = _setup_controller(robot)
 
@@ -250,7 +269,6 @@ def main(argv):
 
     start_time = robot.GetTimeSinceReset()
     current_time = start_time
-    timeline, com_vels, imu_rates = [], [], []
     if FLAGS.use_real_robot == False and FLAGS.pos_control == True:
       raise ValueError("Can't use positional control in bullet")
 
@@ -258,50 +276,43 @@ def main(argv):
       r = rospy.Rate(800)
       slowDownSim()
   else:
-    start_time = robot.getTimeSinceReset()
+    start_time = robot.GetTimeSinceReset()
     current_time = start_time
     inputCommand = InputCommand([0,0],0)
     inputCommand.useIMU = True
     robot.sendControllerCommand(inputCommand)
 
     current_time = start_time
-    r = rospy.Rate(UPDATE_RATE)
     #slowDownSim(0.0001)
 
-
-
+  if FLAGS.use_real_robot or FLAGS.use_gazebo:
+    r = rospy.Rate(UPDATE_RATE)
   while not rospy.is_shutdown() and current_time - start_time < FLAGS.max_time_secs:
-    
-    if FLAGS.pos_control:
-
-      lin_speed, ang_speed, e_stop = command_function(current_time)
-      inputCommand = InputCommand(lin_speed,ang_speed)
-      inputCommand.useIMU = True
-      if not robot.sendControllerCommand(inputCommand):
-        break
-      r.sleep()
-      current_time = robot.getTimeSinceReset()
-
-    else:
       start_time_robot = current_time
       start_time_wall = time.time()
       # Updates the controller behavior parameters.
       lin_speed, ang_speed, e_stop = command_function(current_time)
+
       if e_stop:
         logging.info("E-stop kicked, exiting...")
         break
       
       inputCommand = InputCommand(lin_speed,ang_speed)
-      robot.sendControllerCommand(inputCommand)
-      
+      if FLAGS.pos_control:
+        inputCommand.useIMU = True
+      if not robot.sendControllerCommand(inputCommand):
+        break
+
       timeline.append(current_time)
       com_vels.append(np.array(robot.GetBaseVelocity()).copy())
       imu_rates.append(np.array(robot.GetBaseRollPitchYawRate()).copy())
-      current_time = robot.GetTimeSinceReset()
 
+      current_time = robot.GetTimeSinceReset()
       rollPitch = robot.GetBaseRollPitchYaw()
+
       # Stop simulation if rollover
-      if  abs(rollPitch[0])> 0.5 or abs(rollPitch[1])> 0.5:
+      if not FLAGS.pos_control and (abs(rollPitch[0])> 0.5 or abs(rollPitch[1])> 0.5):
+        print("Rolled over")
         break
 
       if not FLAGS.use_real_robot:
@@ -309,8 +320,7 @@ def main(argv):
         actual_duration = time.time() - start_time_wall
         if actual_duration < expected_duration:
           time.sleep(expected_duration - actual_duration)
-      # print("actual_duration=", actual_duration)
-      if FLAGS.use_real_robot:
+      if FLAGS.use_real_robot or FLAGS.use_gazebo:
         r.sleep()
 
 

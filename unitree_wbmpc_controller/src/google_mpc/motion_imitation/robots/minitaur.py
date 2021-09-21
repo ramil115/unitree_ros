@@ -255,6 +255,7 @@ class Minitaur(object):
     hybrid_action, _ = self.controller.get_action()
     self.actions.append(hybrid_action)
     self.Step(hybrid_action)
+    return True
     
   def Step(self, action, control_mode=None):
     """Steps simulation."""

@@ -10,8 +10,8 @@ from std_msgs.msg import Float64
 import time
 import numpy as np
 
-class a1_ros:
-    def __init__(self, rname, position_control=False, update_rate=1000):
+class A1GazeboInterface:
+    def __init__(self, rname, position_control=False, update_rate=100):
 
         self.np = rospy.init_node('a1_ros', anonymous=True)
         self.robot_name = rname
@@ -227,6 +227,9 @@ class a1_ros:
     def getBaseOrientation(self):
         return self.lowState.imu.quaternion
 
+    def GetTrueBaseRollPitchYawRate(self):
+        return np.array(self.lowState.imu.gyroscope).copy()
+
     def receive_observation(self):
         return self.lowState
 
@@ -276,7 +279,7 @@ class a1_ros:
             print("POSITION FAIL")
             return None
 
-    def getTimeSinceReset(self):
+    def GetTimeSinceReset(self):
         return rospy.get_time() - self.resetTime
 
     def sendControllerCommand(self,inputCommand):
