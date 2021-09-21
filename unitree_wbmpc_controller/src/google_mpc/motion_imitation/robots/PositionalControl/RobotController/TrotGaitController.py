@@ -16,10 +16,15 @@ class TrotGaitController(GaitController):
         self.autoRest = True
         self.trotNeeded = True
 
-        contact_phases = np.array([[1, 1, 1, 0],  # 0: Leg swing
-                                   [1, 0, 1, 1],  # 1: Moving stance forward
-                                   [1, 0, 1, 1],  
-                                   [1, 1, 1, 0]])
+        # contact_phases = np.array([[1, 1, 1, 0],  # 0: Leg swing
+        #                            [1, 0, 1, 1],  # 1: Moving stance forward
+        #                            [1, 0, 1, 1],  
+        #                            [1, 1, 1, 0]])
+
+        contact_phases = np.array([[1, 0],  # 0: Leg swing
+                                   [0, 1],  # 1: Moving stance forward
+                                   [0, 1],  
+                                   [1, 0]])
 
         z_error_constant = 0.02    # This constant determines how fast we move
                                    # toward the goal in the z direction
@@ -47,9 +52,9 @@ class TrotGaitController(GaitController):
 
 
     def updateStateCommand(self, msg, state, command):
-        command.velocity[0] = msg.axes[4] * self.max_x_velocity
-        command.velocity[1] = msg.axes[3] * self.max_y_velocity
-        command.yaw_rate = msg.axes[0] * self.max_yaw_rate
+        command.velocity[0] = 0.3 #msg.axes[4]
+        command.velocity[1] = 0 #msg.axes[3]
+        command.yaw_rate = 0 #msg.axes[0]
 
         if self.use_button:
             if msg.buttons[7]:
@@ -96,9 +101,12 @@ class TrotGaitController(GaitController):
                 compensation = self.pid_controller.run(state.imu_roll, state.imu_pitch)
                 roll_compensation = -compensation[0]
                 pitch_compensation = -compensation[1]
-                print(roll_compensation)
-                print(pitch_compensation)
-                print()
+                roll_compensation = 0.0
+                pitch_compensation = 0.0
+                # print(roll_compensation)
+                # print(pitch_compensation)
+                print(state.ticks)
+                print(new_foot_locations[1][1])
                 rot = rotxyz(roll_compensation,pitch_compensation,0)
                 new_foot_locations = np.matmul(rot,new_foot_locations)
             state.ticks += 1
@@ -125,7 +133,7 @@ class TrotSwingController(object):
         self.default_stance = default_stance
 
     def raibert_touchdown_location(self, leg_index, command):
-        delta_pos_2d = command.velocity * self.phase_length * self.time_step
+        delta_pos_2d = command.velocity * self.stance_ticks * self.time_step*0.5
         delta_pos = np.array([delta_pos_2d[0], delta_pos_2d[1], 0])
 
         theta = self.stance_ticks * self.time_step * command.yaw_rate
@@ -166,14 +174,14 @@ class TrotStanceController(object):
     def position_delta(self, leg_index, state, command):
         z = state.foot_locations[2, leg_index]
 
-        step_dist_x = command.velocity[0] *\
-                      (float(self.phase_length)/self.swing_ticks)
+        # step_dist_x = command.velocity[0] *\
+        #               (float(self.phase_length)/self.swing_ticks)
 
-        step_dist_y = command.velocity[1] *\
-                      (float(self.phase_length)/self.swing_ticks)
+        # step_dist_y = command.velocity[1] *\
+        #               (float(self.phase_length)/self.swing_ticks)
 
-        velocity = np.array([-(step_dist_x/4)/(float(self.time_step)*self.stance_ticks), 
-                             -(step_dist_y/4)/(float(self.time_step)*self.stance_ticks), 
+        velocity = np.array([-command.velocity[0], 
+                             -command.velocity[1], 
                              1.0 / self.z_error_constant * (state.robot_height - z)])
 
         delta_pos = velocity * self.time_step

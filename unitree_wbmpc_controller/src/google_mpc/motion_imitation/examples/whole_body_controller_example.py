@@ -43,7 +43,7 @@ flags.DEFINE_bool("use_gamepad", False,
 flags.DEFINE_bool("use_real_robot", True,
                   "whether to use real robot or simulation")
 flags.DEFINE_bool("show_gui", True, "whether to show GUI.")
-flags.DEFINE_float("max_time_secs", 100., "maximum time to run the robot.")
+flags.DEFINE_float("max_time_secs", 20., "maximum time to run the robot.")
 flags.DEFINE_bool("pos_control", False, "use positional control?")
 FLAGS = flags.FLAGS
 
@@ -213,7 +213,7 @@ def main(argv):
   if FLAGS.use_real_robot:
     if FLAGS.pos_control:
       from motion_imitation.robots import a1_gazebo
-      UPDATE_RATE = 50
+      UPDATE_RATE = 100
       robot = a1_gazebo.a1_ros('a1',position_control=True,update_rate=UPDATE_RATE)
     else:
       from motion_imitation.robots import a1_robot
@@ -325,29 +325,30 @@ def main(argv):
     node_process = Popen(shlex.split('rosrun unitree_controller servopy.py'))
 
   ############# PLOTTING ##############################
-  temp=np.zeros((len(robot.actions),12))
-  for i in range(len(robot.actions)):
-    temp[i][:] = robot.actions[i][4:60:5]
+  if not FLAGS.pos_control:
+    temp=np.zeros((len(robot.actions),12))
+    for i in range(len(robot.actions)):
+      temp[i][:] = robot.actions[i][4:60:5]
 
-  plt.figure()
-  plt.plot(timeline, temp)
-  plt.legend(['FR_hip_torque','FR_upper_torque','FR_lower_torque',
-              'FL_hip_torque','FL_upper_torque','FL_lower_torque',
-              'RR_hip_torque','RR_upper_torque','RR_lower_torque',
-              'RL_hip_torque','RL_upper_torque','RL_lower_torque'])
+    plt.figure()
+    plt.plot(timeline, temp)
+    plt.legend(['FR_hip_torque','FR_upper_torque','FR_lower_torque',
+                'FL_hip_torque','FL_upper_torque','FL_lower_torque',
+                'RR_hip_torque','RR_upper_torque','RR_lower_torque',
+                'RL_hip_torque','RL_upper_torque','RL_lower_torque'])
 
-  plt.figure()
-  plt.plot(timeline, com_vels)
-  plt.legend(['Vx','Vy','Vz'])
+    plt.figure()
+    plt.plot(timeline, com_vels)
+    plt.legend(['Vx','Vy','Vz'])
 
-  plt.figure()
-  plt.plot(timeline, imu_rates)
-  plt.legend(['Wx','Wy','Wz'])
+    plt.figure()
+    plt.plot(timeline, imu_rates)
+    plt.legend(['Wx','Wy','Wz'])
 
-  plt.figure()
-  plt.plot(timeline, controller._stance_leg_controller._desired_ddq_array)
-  plt.legend(['dd_x','dd_y','dd_z','dd_roll','dd_pitch','dd_yaw'])
-  plt.show()
+    plt.figure()
+    plt.plot(timeline, controller._stance_leg_controller._desired_ddq_array)
+    plt.legend(['dd_x','dd_y','dd_z','dd_roll','dd_pitch','dd_yaw'])
+    plt.show()
 
   #######################################################
 
