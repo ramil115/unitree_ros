@@ -212,12 +212,9 @@ def main(argv):
   p.setPhysicsEngineParameter(enableConeFriction=0)
   p.setAdditionalSearchPath(pybullet_data.getDataPath())
   p.loadURDF("plane.urdf")
-
-
   
   UPDATE_RATE = 100
   
-  # Construct robot class:
   if FLAGS.use_gazebo:
     from motion_imitation.robots.A1RobotGazebo import A1RobotGazebo
     if FLAGS.pos_control:
@@ -236,7 +233,7 @@ def main(argv):
           enable_action_interpolation=False,
           time_step=0.002,
           action_repeat=1)
-  else: #pybullet
+  elif not FLAGS.use_real_robot: #pybullet
     if FLAGS.pos_control:
       raise Exception("Position control not implemented for pybullet")
     else:
@@ -246,6 +243,24 @@ def main(argv):
                   reset_time=2,
                   time_step=0.002,
                   action_repeat=1)
+  else:
+    from motion_imitation.robots.a1_robot import A1Robot
+    if FLAGS.pos_control:
+      robot = A1Robot(
+          pybullet_client=p,
+          motor_control_mode=robot_config.MotorControlMode.HYBRID,
+          enable_action_interpolation=False,
+          time_step=0.002,
+          action_repeat=1,
+          position_control=True,
+          update_rate=UPDATE_RATE)
+    else:
+      robot = A1Robot(
+          pybullet_client=p,
+          motor_control_mode=robot_config.MotorControlMode.HYBRID,
+          enable_action_interpolation=False,
+          time_step=0.002,
+          action_repeat=1)
 
 
   if FLAGS.use_gamepad:
@@ -255,6 +270,7 @@ def main(argv):
       command_function = _generate_example_linear_angular_speed
 
   timeline, com_vels, imu_rates = [], [], []
+
   if not FLAGS.pos_control:
     controller = _setup_controller(robot)
 
@@ -269,12 +285,7 @@ def main(argv):
 
     start_time = robot.GetTimeSinceReset()
     current_time = start_time
-    if FLAGS.use_real_robot == False and FLAGS.pos_control == True:
-      raise ValueError("Can't use positional control in bullet")
 
-    if FLAGS.use_real_robot:
-      r = rospy.Rate(800)
-      slowDownSim()
   else:
     start_time = robot.GetTimeSinceReset()
     current_time = start_time
@@ -287,6 +298,7 @@ def main(argv):
 
   if FLAGS.use_real_robot or FLAGS.use_gazebo:
     r = rospy.Rate(UPDATE_RATE)
+
   while not rospy.is_shutdown() and current_time - start_time < FLAGS.max_time_secs:
       start_time_robot = current_time
       start_time_wall = time.time()
